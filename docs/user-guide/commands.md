@@ -25,6 +25,73 @@ pltr <command> --format csv      # CSV format
 pltr <command> --output file.csv # Save to file
 ```
 
+## Dependency Analysis Commands
+
+`pltr dependency` performs read-only, bounded analysis and supports exactly six
+direct target forms:
+
+```bash
+pltr dependency object-type ONTOLOGY_RID OBJECT_TYPE
+pltr dependency property ONTOLOGY_RID OBJECT_TYPE PROPERTY
+pltr dependency link-type ONTOLOGY_RID OBJECT_TYPE LINK_TYPE
+pltr dependency action-type ONTOLOGY_RID ACTION_TYPE
+pltr dependency query-type ONTOLOGY_RID QUERY_TYPE
+pltr dependency resource RESOURCE_RID
+```
+
+`resource` requires a Compass-resolvable RID and specializes datasets and
+third-party applications after resolution. Schedules and standalone Functions
+are traversed only when discovered; they are not direct target commands.
+Workshop names and variables are not accepted as targets.
+
+Every command accepts `--branch`, `--profile`, `--change`, `--direction`,
+`--depth`, `--max-nodes`, `--max-requests`, `--max-pages`, `--max-items`,
+`--time-budget-seconds`, `--format table|json|csv`, `--output`,
+`--graph-output`, and `--full`. Defaults are depth 2, 150 nodes, 200 requests,
+100 pages, 10,000 items, and 60 seconds. Hard ceilings are respectively 10,
+1,000, 1,000, 500, 100,000, and 600 seconds. `--full` only expands the table;
+it never changes discovery or artifact completeness.
+
+Each successful invocation writes the complete graph before rendering. Use
+`--graph-output PATH`, or find it under
+`${XDG_STATE_HOME:-~/.local/state}/pltr/dependency/<analysis-id>.json`.
+Artifacts are written atomically with mode `0600`; their retention and deletion
+are operator-managed. `--output` controls the requested table/JSON/CSV rendering
+and never replaces the graph artifact. Compact output includes the same analysis
+ID, absolute artifact path, SHA-256 digest, top path/evidence, gaps, and budgets.
+CSV has explicit `node`, `edge`, `path`, `coverage`, `gap`, `error`, `evidence`,
+and `operation-provenance` row kinds.
+
+Relations retain intrinsic orientation. Dependency-flow relations derive
+root-relative upstream/downstream paths; adjacent-structural relations remain
+adjacent from either root. Coverage is `covered`, `covered-empty`, `partial`,
+`inaccessible`, `unsupported`, `unresolved`, or `budget-exhausted`. A gap never
+means that a dependency is absent.
+
+The target-kind coverage matrix uses `D` for direct supported evidence, `I` for
+a once-per-context reverse index, `C` for conditionally supported evidence,
+`G` for a mandatory explicit gap, and `N` for structurally not applicable.
+`D/G` means supported fields are reported while a known omitted remainder is
+gapped. Conditional dataset records are created per returned schedule, build,
+and job rather than being hidden behind a single parent status.
+
+Operation provenance records the generated SDK namespace/method, pinned
+capability IDs, installed SDK version, timestamps, timeout, and exact branch and
+preview argument states (`explicit`, `server-default`, or `not-applicable`).
+Fatal errors use stable classes including `authentication`, `permission-denied`,
+`not-found`, `branch-not-found`, `rate-limited`, `timeout`, `connection`,
+`invalid-request`, `unsupported`, `invalid-response`, `budget-exhausted`,
+`artifact-write-failed`, `internal`, and `unknown`.
+
+Dataset schedule RIDs are verified evidence, but the SDK documents that the
+reverse schedule index may lag by up to one hour. Therefore even a successful
+empty schedule lookup is partial, not proof that the dataset has no consumers.
+Schedule actions, triggers, scopes, runs, submitted builds, jobs, and typed
+outputs have separate conditional coverage. Configured target/input evidence
+comes from `Schedule.action.target`, never from a build response. Dynamically
+resolved upstream lineage, output kinds omitted by the API, application internals,
+Workshop internals, and standalone Function reverse wiring remain explicit gaps.
+
 ---
 
 ## 🔧 Configuration Commands

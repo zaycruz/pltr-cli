@@ -33,6 +33,7 @@ from pltr.commands import (
     data_health,
     audit,
     widgets,
+    dependency,
 )
 from pltr.commands.cp import cp_command
 
@@ -113,6 +114,11 @@ app.add_typer(
     admin.app,
     name="admin",
     help="Admin operations for user, group, and organization management",
+)
+app.add_typer(
+    dependency.app,
+    name="dependency",
+    help="Analyze Foundry dependency graphs and coverage",
 )
 app.add_typer(shell.shell_app, name="shell", help="Interactive shell mode")
 app.add_typer(completion.app, name="completion", help="Manage shell completions")
