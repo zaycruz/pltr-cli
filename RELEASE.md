@@ -8,6 +8,12 @@ The release script (`scripts/release.py`) supports both interactive and non-inte
 - **Interactive mode**: For human developers who want to review and confirm each step
 - **Non-interactive mode**: For AI agents and automated systems that need to create releases programmatically
 
+## Native agent interface
+
+The CLI's native `--agent` output is the supported interface for autonomous agents. Releases must verify the capability manifest and agent-output contract without requiring Node, npm, or an external MCP package.
+
+Removal of `pltr mcp` is a breaking change and must be called out in release notes with native command replacements.
+
 ## Quick Start
 
 ### For Humans (Interactive Mode)
