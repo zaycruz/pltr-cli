@@ -781,9 +781,7 @@ def test_pinned_job_outputs_are_preserved_as_declared_discriminated_models(
     mock_orchestration_service,
 ):
     service, mock_build_class, _, _ = mock_orchestration_service
-    dataset_output = DatasetJobOutput(
-        datasetRid="ri.foundry.main.dataset.output"
-    )
+    dataset_output = DatasetJobOutput(datasetRid="ri.foundry.main.dataset.output")
     media_output = TransactionalMediaSetJobOutput(
         mediaSetRid="ri.mio.main.media-set.output"
     )
@@ -820,9 +818,7 @@ def test_pinned_job_outputs_are_preserved_as_declared_discriminated_models(
 
 def test_affected_resources_uses_pinned_datasets_field(mock_orchestration_service):
     service, _, _, mock_schedule_class = mock_orchestration_service
-    response = AffectedResourcesResponse(
-        datasets=["ri.foundry.main.dataset.output"]
-    )
+    response = AffectedResourcesResponse(datasets=["ri.foundry.main.dataset.output"])
     mock_schedule_class.get_affected_resources.return_value = response
 
     assert service.get_schedule_affected_resources(
@@ -1012,9 +1008,7 @@ def test_pinned_schedule_run_result_variants_survive_real_wrapper(
 def test_pinned_schedule_models_flow_through_wrappers_into_dependency_collector(
     mock_orchestration_service,
 ):
-    orchestration, mock_build_class, _, mock_schedule_class = (
-        mock_orchestration_service
-    )
+    orchestration, mock_build_class, _, mock_schedule_class = mock_orchestration_service
     trigger = AndTrigger(
         triggers=[
             DatasetUpdatedTrigger(
@@ -1039,10 +1033,8 @@ def test_pinned_schedule_models_flow_through_wrappers_into_dependency_collector(
         trigger=trigger,
         scope=ProjectScope(projectRids=["ri.compass.main.folder.project"]),
     )
-    mock_schedule_class.get_affected_resources.return_value = (
-        AffectedResourcesResponse(
-            datasets=["ri.foundry.main.dataset.affected-output"]
-        )
+    mock_schedule_class.get_affected_resources.return_value = AffectedResourcesResponse(
+        datasets=["ri.foundry.main.dataset.affected-output"]
     )
     mock_schedule_class.runs.return_value = Mock(
         data=[
@@ -1113,16 +1105,12 @@ def test_pinned_schedule_models_flow_through_wrappers_into_dependency_collector(
         )
     }
 
-    collector._collect_schedule(
-        analysis, root, schedule_node, orchestration, records
-    )
+    collector._collect_schedule(analysis, root, schedule_node, orchestration, records)
 
     edges = list(analysis.edges.values())
     assert sum(edge.relation_kind == "run-submitted-build" for edge in edges) == 1
     assert sum(node.kind == "build" for node in analysis.nodes.values()) == 1
-    assert {
-        edge.relation_kind for edge in edges
-    } >= {
+    assert {edge.relation_kind for edge in edges} >= {
         "schedule-consumes-resource",
         "schedule-produces-resource",
         "schedule-triggered-by-resource",
@@ -1175,8 +1163,7 @@ def test_pinned_schedule_models_flow_through_wrappers_into_dependency_collector(
     build_get_kwargs = mock_build_class.get.call_args.kwargs
     assert set(build_get_kwargs) == {"build_rid", "request_timeout"}
     assert (
-        build_get_kwargs["build_rid"]
-        == "ri.orchestration.main.build.submitted-build"
+        build_get_kwargs["build_rid"] == "ri.orchestration.main.build.submitted-build"
     )
     assert isinstance(build_get_kwargs["request_timeout"], int)
     jobs_kwargs = mock_build_class.jobs.call_args.kwargs

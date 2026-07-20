@@ -59,9 +59,7 @@ def result_fixture():
                 "locator": "query.output.type",
             }
         ],
-        "errors": [
-            {"id": "error-1", "error_class": "timeout", "message": "timed out"}
-        ],
+        "errors": [{"id": "error-1", "error_class": "timeout", "message": "timed out"}],
         "evidence": [
             {
                 "id": "ev-1",
@@ -96,9 +94,7 @@ def independent_payload_digest(document):
     agent = payload.get("agent")
     if isinstance(agent, dict):
         payload["agent"] = {
-            key: value
-            for key, value in agent.items()
-            if key != "artifact_reference"
+            key: value for key, value in agent.items() if key != "artifact_reference"
         }
     canonical = json.dumps(
         payload,
@@ -120,9 +116,10 @@ def test_identity_excludes_only_artifact_metadata():
 
 def test_default_path_uses_xdg_state_home(monkeypatch, tmp_path):
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
-    assert default_artifact_path("dep-123") == (
-        tmp_path / "pltr" / "dependency" / "dep-123.json"
-    ).resolve()
+    assert (
+        default_artifact_path("dep-123")
+        == (tmp_path / "pltr" / "dependency" / "dep-123.json").resolve()
+    )
 
 
 def test_write_is_atomic_complete_and_mode_0600(tmp_path):
@@ -137,7 +134,9 @@ def test_write_is_atomic_complete_and_mode_0600(tmp_path):
     assert oct(destination.stat().st_mode & 0o777) == "0o600"
     document = json.loads(destination.read_text())
     expected = result_fixture()
-    assert {key: value for key, value in document.items() if key != "artifact"} == expected
+    assert {
+        key: value for key, value in document.items() if key != "artifact"
+    } == expected
     assert document["artifact"] == metadata
     assert metadata["path"] == str(destination.resolve())
     expected_digest = independent_payload_digest(document)
@@ -211,7 +210,9 @@ def test_artifact_provenance_schema_and_evidence_references_are_exact(tmp_path):
     write_dependency_artifact(result, destination)
     document = json.loads(destination.read_text())
     operations = {item["id"]: item for item in document["operation_provenance"]}
-    assert {item["operation_provenance_id"] for item in document["evidence"]} <= operations.keys()
+    assert {
+        item["operation_provenance_id"] for item in document["evidence"]
+    } <= operations.keys()
     for operation in operations.values():
         assert operation["capability_ids"]
         assert operation["invocation_sdk_version"] == "1.95.0"
@@ -244,9 +245,7 @@ def test_agent_block_round_trips_additively_without_losing_nested_values(tmp_pat
         },
         "diff": {
             "added_edges": ["edge-2"],
-            "removed_edges": [
-                {"edge_id": "edge-3", "possibly_budget_truncated": True}
-            ],
+            "removed_edges": [{"edge_id": "edge-3", "possibly_budget_truncated": True}],
         },
     }
 
@@ -271,7 +270,9 @@ def test_agent_block_round_trips_additively_without_losing_nested_values(tmp_pat
         "ev-2",
     ]
     assert {
-        key: value for key, value in document.items() if key not in {"agent", "artifact"}
+        key: value
+        for key, value in document.items()
+        if key not in {"agent", "artifact"}
     } == {key: value for key, value in serialized.items() if key != "agent"}
 
 

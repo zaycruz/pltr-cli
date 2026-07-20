@@ -167,8 +167,7 @@ def test_each_pinned_action_rule_discriminant_reaches_extractor_with_root_locato
         for gap in analysis.gaps.values()
     )
     assert all(
-        locator.startswith("fullLogicRules[0]")
-        for _, _, locator, _ in rule_references
+        locator.startswith("fullLogicRules[0]") for _, _, locator, _ in rule_references
     )
     assert all(
         gap.locator is None or gap.locator.startswith("fullLogicRules[0]")
@@ -202,9 +201,7 @@ def test_each_pinned_query_data_type_discriminant_reaches_rooted_closure(
         "interface_type_api_name": "Worker",
     }
     model_values = {
-        name: values[name]
-        for name in data_type_model.model_fields
-        if name in values
+        name: values[name] for name in data_type_model.model_fields if name in values
     }
     if discriminator == "twoDimensionalAggregation":
         model_values = {
@@ -267,9 +264,10 @@ def test_future_action_and_query_discriminants_create_exact_rooted_gaps():
         full_logic_rules=[SimpleNamespace(type="futureRule")],
     )
 
-    assert service._extract_action_references(
-        metadata, "ontology", analysis, "operation"
-    ) == []
+    assert (
+        service._extract_action_references(metadata, "ontology", analysis, "operation")
+        == []
+    )
     action_gap = next(iter(analysis.gaps.values()))
     assert action_gap.reason_code == "unknown-action-logic-rule:futureRule"
     assert action_gap.locator == "fullLogicRules[0]"
@@ -292,8 +290,18 @@ def test_future_action_and_query_discriminants_create_exact_rooted_gaps():
 @pytest.mark.parametrize(
     ("supported", "kwargs", "name", "expected"),
     [
-        (True, {"branch": "feature"}, "branch", ArgumentObservation("explicit", "feature")),
-        (True, {"branch_name": "feature"}, "branch", ArgumentObservation("explicit", "feature")),
+        (
+            True,
+            {"branch": "feature"},
+            "branch",
+            ArgumentObservation("explicit", "feature"),
+        ),
+        (
+            True,
+            {"branch_name": "feature"},
+            "branch",
+            ArgumentObservation("explicit", "feature"),
+        ),
         (True, {}, "branch", ArgumentObservation("server-default")),
         (True, {"preview": True}, "preview", ArgumentObservation("explicit", True)),
         (True, {}, "preview", ArgumentObservation("server-default")),
@@ -375,7 +383,12 @@ def test_hard_budget_ceilings_reject_before_discovery(field, ceiling):
     ("error", "error_class", "coverage", "retryable"),
     [
         (sdk_errors.UnauthorizedError({}), "authentication", "inaccessible", False),
-        (sdk_errors.PermissionDeniedError({}), "permission-denied", "inaccessible", False),
+        (
+            sdk_errors.PermissionDeniedError({}),
+            "permission-denied",
+            "inaccessible",
+            False,
+        ),
         (sdk_errors.NotFoundError({}), "not-found", "unresolved", False),
         (sdk_errors.ApiNotFoundError("missing"), "unsupported", "unsupported", False),
         (sdk_errors.RateLimitError("limited", "rate"), "rate-limited", "partial", True),
@@ -383,7 +396,12 @@ def test_hard_budget_ceilings_reject_before_discovery(field, ceiling):
         (sdk_errors.ConnectionError("connection"), "connection", "partial", True),
         (sdk_errors.ProxyError("proxy"), "connection", "partial", True),
         (sdk_errors.BadRequestError({}), "invalid-request", "unresolved", False),
-        (sdk_errors.UnprocessableEntityError({}), "invalid-request", "unresolved", False),
+        (
+            sdk_errors.UnprocessableEntityError({}),
+            "invalid-request",
+            "unresolved",
+            False,
+        ),
         (sdk_errors.InternalServerError({}), "internal", "partial", True),
         (RuntimeError("unknown"), "unknown", "unresolved", False),
     ],
@@ -471,7 +489,10 @@ def test_dependency_flow_reverses_only_root_relative_direction(
     assert edge.traversal_class == "dependency-flow"
     assert service._traversal_direction(edge, source.id) == "downstream"
     assert service._traversal_direction(edge, target.id) == "upstream"
-    assert service._add_edge(analysis, source.id, target.id, relation_kind, []).id == edge.id
+    assert (
+        service._add_edge(analysis, source.id, target.id, relation_kind, []).id
+        == edge.id
+    )
 
 
 @pytest.mark.parametrize(
@@ -552,7 +573,9 @@ def test_actual_full_action_metadata_uses_full_rules_when_operations_are_empty()
     )
 
     assert any(
-        kind == "object-type" and name == "Employee" and locator.startswith("fullLogicRules")
+        kind == "object-type"
+        and name == "Employee"
+        and locator.startswith("fullLogicRules")
         for kind, name, locator, _ in references
     )
     assert not any("operations" in locator for _, _, locator, _ in references)
@@ -637,9 +660,12 @@ def test_full_action_parameter_id_and_property_reference_fields_are_explicit():
                 function_rid="ri.function-registry.main.function.fn",
                 function_version="1.0.0",
                 function_input_values={
-                    "employee": ontology_models.ParameterIdArgument(parameter_id="employee"),
+                    "employee": ontology_models.ParameterIdArgument(
+                        parameter_id="employee"
+                    ),
                     "shared": ontology_models.InterfaceParameterPropertyArgument(
-                        parameter_id="employee", shared_property_type_rid="ri.ontology.main.shared-property.name"
+                        parameter_id="employee",
+                        shared_property_type_rid="ri.ontology.main.shared-property.name",
                     ),
                 },
             ),
@@ -656,11 +682,20 @@ def test_full_action_parameter_id_and_property_reference_fields_are_explicit():
     )
     service = DependencyGraphService(client=SimpleNamespace())
     analysis = context()
-    references = service._extract_action_references(metadata, "ontology", analysis, "operation")
-    assert any(kind == "object-type" and name == "Employee" for kind, name, _, _ in references)
+    references = service._extract_action_references(
+        metadata, "ontology", analysis, "operation"
+    )
+    assert any(
+        kind == "object-type" and name == "Employee" for kind, name, _, _ in references
+    )
     assert any(kind == "property" and name == "name" for kind, name, _, _ in references)
-    assert any(kind == "shared-property-type" and name.endswith(".name") for kind, name, _, _ in references)
-    assert any(kind == "link-type" and name == "manager" for kind, name, _, _ in references)
+    assert any(
+        kind == "shared-property-type" and name.endswith(".name")
+        for kind, name, _, _ in references
+    )
+    assert any(
+        kind == "link-type" and name == "manager" for kind, name, _, _ in references
+    )
 
 
 def test_action_and_query_reverse_indices_cache_once_per_branch():
@@ -678,7 +713,9 @@ def test_action_and_query_reverse_indices_cache_once_per_branch():
         full_logic_rules=[],
     )
     query = _recursive_query()
-    action_list = Mock(return_value=SimpleNamespace(data=[action], next_page_token=None))
+    action_list = Mock(
+        return_value=SimpleNamespace(data=[action], next_page_token=None)
+    )
     query_list = Mock(return_value=SimpleNamespace(data=[query], next_page_token=None))
     client = SimpleNamespace(
         ontologies=SimpleNamespace(
@@ -763,7 +800,9 @@ def test_query_scc_fixed_point_is_complete_from_both_entry_roots():
         context(max_depth=10),
     )
 
-    assert {leaf["name"] for leaf in closure["parameters.input.dataType"]["leaves"]} == {"X", "Y"}
+    assert {
+        leaf["name"] for leaf in closure["parameters.input.dataType"]["leaves"]
+    } == {"X", "Y"}
     assert {leaf["name"] for leaf in closure["output"]["leaves"]} == {"X", "Y"}
     assert closure["parameters.input.dataType"]["sccs"] == [["A", "B"]]
     assert closure["output"]["sccs"] == [["A", "B"]]
@@ -787,11 +826,24 @@ def test_query_parameter_inputs_and_outputs_have_opposite_intrinsic_orientation(
         {"ontology_rid": "ontology", "query_type": query.api_name},
         True,
     )
-    target = DependencyTarget("query-type", query_node.identifiers, query.api_name, query_node.id)
-    analysis.caches[("query-metadata", "ontology", "feature", query.api_name)] = (query, "operation")
+    target = DependencyTarget(
+        "query-type", query_node.identifiers, query.api_name, query_node.id
+    )
+    analysis.caches[("query-metadata", "ontology", "feature", query.api_name)] = (
+        query,
+        "operation",
+    )
     service._collect_query_target(target, analysis)
-    accepts = [edge for edge in analysis.edges.values() if edge.relation_kind == "query-accepts-object"]
-    returns = [edge for edge in analysis.edges.values() if edge.relation_kind == "query-returns-object"]
+    accepts = [
+        edge
+        for edge in analysis.edges.values()
+        if edge.relation_kind == "query-accepts-object"
+    ]
+    returns = [
+        edge
+        for edge in analysis.edges.values()
+        if edge.relation_kind == "query-returns-object"
+    ]
     assert accepts and all(edge.target == query_node.id for edge in accepts)
     assert returns and all(edge.source == query_node.id for edge in returns)
 
@@ -807,7 +859,9 @@ def test_reachable_unsupported_query_type_gaps_but_unreachable_does_not():
     )
 
     gaps = closure["output"]["gaps"]
-    assert [gap["reason_code"] for gap in gaps].count("unsupported-query-data-type") == 1
+    assert [gap["reason_code"] for gap in gaps].count(
+        "unsupported-query-data-type"
+    ) == 1
     assert all("UNREACHABLE" not in gap["locator"] for gap in gaps)
 
 
@@ -827,7 +881,9 @@ def test_missing_reachable_reference_is_invalid_but_unreachable_missing_is_ignor
     )
 
     assert any("MISSING" in gap["message"] for gap in closure["parameter"]["gaps"])
-    assert all("OTHER_MISSING" not in gap["message"] for gap in closure["parameter"]["gaps"])
+    assert all(
+        "OTHER_MISSING" not in gap["message"] for gap in closure["parameter"]["gaps"]
+    )
 
 
 def test_schedule_reverse_index_empty_success_is_always_partial(monkeypatch):
@@ -845,9 +901,7 @@ def test_schedule_reverse_index_empty_success_is_always_partial(monkeypatch):
         {"resource_rid": "ri.foundry.main.dataset.test"},
         True,
     )
-    target = DependencyTarget(
-        "dataset", node.identifiers, node.display_name, node.id
-    )
+    target = DependencyTarget("dataset", node.identifiers, node.display_name, node.id)
 
     result = service.analyze(target, analysis)
 
@@ -887,7 +941,10 @@ def test_dataset_chain_uses_schedule_action_then_run_build_jobs_outputs(monkeypa
                 "target": {
                     "type": "connecting",
                     "input_rids": ["ri.foundry.main.dataset.input"],
-                    "target_rids": ["ri.foundry.main.dataset.root", "ri.foundry.main.dataset.target"],
+                    "target_rids": [
+                        "ri.foundry.main.dataset.root",
+                        "ri.foundry.main.dataset.target",
+                    ],
                     "ignored_rids": ["ri.foundry.main.dataset.ignored"],
                 }
             },
@@ -903,7 +960,10 @@ def test_dataset_chain_uses_schedule_action_then_run_build_jobs_outputs(monkeypa
         observed.append(("runs", kwargs))
         return {
             "runs": [
-                {"rid": "run-a", "result": {"type": "submitted", "build_rid": "build-a"}},
+                {
+                    "rid": "run-a",
+                    "result": {"type": "submitted", "build_rid": "build-a"},
+                },
                 {"rid": "run-ignored", "result": {"type": "ignored"}},
             ],
             "next_page_token": None,
@@ -920,20 +980,39 @@ def test_dataset_chain_uses_schedule_action_then_run_build_jobs_outputs(monkeypa
                 {
                     "rid": "job-a",
                     "outputs": [
-                        {"type": "datasetJobOutput", "dataset_rid": "ri.foundry.main.dataset.output"},
-                        {"type": "transactionalMediaSetJobOutput", "media_set_rid": "ri.mio.main.media-set.output"},
+                        {
+                            "type": "datasetJobOutput",
+                            "dataset_rid": "ri.foundry.main.dataset.output",
+                        },
+                        {
+                            "type": "transactionalMediaSetJobOutput",
+                            "media_set_rid": "ri.mio.main.media-set.output",
+                        },
                     ],
                 }
             ],
             "next_page_token": None,
         }
 
-    monkeypatch.setattr("pltr.services.dependency.DatasetService.get_schedule_rids_page", schedules)
-    monkeypatch.setattr("pltr.services.dependency.OrchestrationService.get_schedule", schedule)
-    monkeypatch.setattr("pltr.services.dependency.OrchestrationService.get_schedule_affected_resources", affected)
-    monkeypatch.setattr("pltr.services.dependency.OrchestrationService.get_schedule_runs", runs)
-    monkeypatch.setattr("pltr.services.dependency.OrchestrationService.get_build", build)
-    monkeypatch.setattr("pltr.services.dependency.OrchestrationService.get_build_jobs", jobs)
+    monkeypatch.setattr(
+        "pltr.services.dependency.DatasetService.get_schedule_rids_page", schedules
+    )
+    monkeypatch.setattr(
+        "pltr.services.dependency.OrchestrationService.get_schedule", schedule
+    )
+    monkeypatch.setattr(
+        "pltr.services.dependency.OrchestrationService.get_schedule_affected_resources",
+        affected,
+    )
+    monkeypatch.setattr(
+        "pltr.services.dependency.OrchestrationService.get_schedule_runs", runs
+    )
+    monkeypatch.setattr(
+        "pltr.services.dependency.OrchestrationService.get_build", build
+    )
+    monkeypatch.setattr(
+        "pltr.services.dependency.OrchestrationService.get_build_jobs", jobs
+    )
     service = DependencyGraphService(client=SimpleNamespace())
     analysis = context()
     root = service._add_node(
@@ -968,15 +1047,27 @@ def test_dataset_chain_uses_schedule_action_then_run_build_jobs_outputs(monkeypa
         edge
         for edge in edges
         if edge["relation_kind"] == "schedule-produces-resource"
-        and edge["source"] == next(node["id"] for node in result["graph"]["nodes"] if node["kind"] == "schedule" and node["display_name"] == "schedule-a")
+        and edge["source"]
+        == next(
+            node["id"]
+            for node in result["graph"]["nodes"]
+            if node["kind"] == "schedule" and node["display_name"] == "schedule-a"
+        )
         and edge["target"] == root.id
     )
     assert len(canonical["evidence_ids"]) == 2
     assert any(edge["relation_kind"] == "build-co-output" for edge in edges)
-    assert not any("ignored" in node["display_name"] and node["kind"] == "build" for node in result["graph"]["nodes"])
-    typed = [record for record in result["coverage"] if record["surface"] == "typed-outputs"]
+    assert not any(
+        "ignored" in node["display_name"] and node["kind"] == "build"
+        for node in result["graph"]["nodes"]
+    )
+    typed = [
+        record for record in result["coverage"] if record["surface"] == "typed-outputs"
+    ]
     assert typed and typed[0]["status"] == "partial"
-    assert any(gap["reason_code"] == "unsupported-output-kinds" for gap in result["gaps"])
+    assert any(
+        gap["reason_code"] == "unsupported-output-kinds" for gap in result["gaps"]
+    )
 
 
 @pytest.mark.parametrize(
@@ -997,15 +1088,11 @@ def test_conditional_record_cannot_be_masked_by_stale_parent(surface):
     dataset = service._add_node(
         analysis, "dataset", "dataset", {"rid": "dataset"}, True
     )
-    subject = service._add_node(
-        analysis, "transit", surface, {"rid": surface}
-    )
+    subject = service._add_node(analysis, "transit", surface, {"rid": surface})
     parent = service._coverage_record(
         analysis, "dataset", "schedule-reverse-index", dataset.id
     )
-    service._finish_coverage(
-        parent, "partial", reason="schedule-index-may-be-stale"
-    )
+    service._finish_coverage(parent, "partial", reason="schedule-index-may-be-stale")
     child = service._coverage_record(
         analysis,
         "transit",
@@ -1086,7 +1173,11 @@ def test_unknown_trigger_variant_and_hidden_trigger_are_specific_gaps():
 
 
 def test_third_party_application_read_uses_exact_pinned_kwarg_and_preview():
-    get = Mock(return_value=SimpleNamespace(rid="ri.third-party-applications.main.third-party-application.app"))
+    get = Mock(
+        return_value=SimpleNamespace(
+            rid="ri.third-party-applications.main.third-party-application.app"
+        )
+    )
     client = SimpleNamespace(
         third_party_applications=SimpleNamespace(
             ThirdPartyApplication=SimpleNamespace(get=get)
@@ -1098,7 +1189,9 @@ def test_third_party_application_read_uses_exact_pinned_kwarg_and_preview():
         analysis,
         "third-party-application",
         "app",
-        {"resource_rid": "ri.third-party-applications.main.third-party-application.app"},
+        {
+            "resource_rid": "ri.third-party-applications.main.third-party-application.app"
+        },
         True,
     )
     record = service._coverage_record(
@@ -1140,17 +1233,27 @@ def test_matrix_gap_and_completion_deduplicate_by_subject_surface_context():
 def test_sorted_bfs_dispatches_collectors_transitively_with_cache_local_state():
     service = DependencyGraphService(client=SimpleNamespace())
     analysis = context(max_depth=2)
-    root = service._add_node(analysis, "generic-resource", "root", {"resource_rid": "root"}, True)
+    root = service._add_node(
+        analysis, "generic-resource", "root", {"resource_rid": "root"}, True
+    )
     visits = []
 
     def collect(target, active_context):
         visits.append(target.display_name)
         if target.display_name == "root":
-            child = service._add_node(active_context, "generic-resource", "child", {"resource_rid": "child"})
-            service._add_edge(active_context, target.node_id, child.id, "container-member", [])
+            child = service._add_node(
+                active_context, "generic-resource", "child", {"resource_rid": "child"}
+            )
+            service._add_edge(
+                active_context, target.node_id, child.id, "container-member", []
+            )
         elif target.display_name == "child":
-            leaf = service._add_node(active_context, "generic-resource", "leaf", {"resource_rid": "leaf"})
-            service._add_edge(active_context, target.node_id, leaf.id, "container-member", [])
+            leaf = service._add_node(
+                active_context, "generic-resource", "leaf", {"resource_rid": "leaf"}
+            )
+            service._add_edge(
+                active_context, target.node_id, leaf.id, "container-member", []
+            )
 
     service._collect_target = collect
     service._discover_bfs(
@@ -1165,53 +1268,90 @@ def test_production_bfs_dispatches_action_derived_property_and_link_collectors()
     employee = ontology_models.ActionParameterV2(
         display_name="Employee",
         description=None,
-        data_type=ontology_models.OntologyObjectType(object_api_name="Employee", object_type_api_name="Employee"),
+        data_type=ontology_models.OntologyObjectType(
+            object_api_name="Employee", object_type_api_name="Employee"
+        ),
         required=True,
         type_classes=None,
     )
     metadata = ontology_models.ActionTypeFullMetadata(
         action_type=ontology_models.ActionTypeV2(
-            api_name="UpdateEmployee", description=None, display_name=None, status="ACTIVE",
-            parameters={"employee": employee}, rid="ri.ontology.main.action-type.update", operations=[], tool_description=None,
+            api_name="UpdateEmployee",
+            description=None,
+            display_name=None,
+            status="ACTIVE",
+            parameters={"employee": employee},
+            rid="ri.ontology.main.action-type.update",
+            operations=[],
+            tool_description=None,
         ),
         full_logic_rules=[
             ontology_models.CreateObjectLogicRule(
                 object_type_api_name="Employee",
-                property_arguments={"name": ontology_models.ParameterIdArgument(parameter_id="employee")},
+                property_arguments={
+                    "name": ontology_models.ParameterIdArgument(parameter_id="employee")
+                },
                 struct_property_arguments={},
             ),
             ontology_models.CreateLinkLogicRule(
-                link_type_api_name="manager", source_object="employee", target_object="employee"
+                link_type_api_name="manager",
+                source_object="employee",
+                target_object="employee",
             ),
         ],
     )
     object_metadata = SimpleNamespace(
         object_type=SimpleNamespace(properties={"name": SimpleNamespace()}),
-        implements_interfaces=[], link_types=[],
+        implements_interfaces=[],
+        link_types=[],
     )
     get_full = Mock(return_value=object_metadata)
     get_link = Mock(return_value=SimpleNamespace(object_type_api_name="Employee"))
     client = SimpleNamespace(
         ontologies=SimpleNamespace(
             ActionTypeFullMetadata=SimpleNamespace(
-                list=Mock(return_value=SimpleNamespace(data=[metadata], next_page_token=None))
+                list=Mock(
+                    return_value=SimpleNamespace(data=[metadata], next_page_token=None)
+                )
             ),
             Ontology=SimpleNamespace(
-                ObjectType=SimpleNamespace(get_full_metadata=get_full, get_outgoing_link_type=get_link),
-                QueryType=SimpleNamespace(list=Mock(return_value=SimpleNamespace(data=[], next_page_token=None))),
+                ObjectType=SimpleNamespace(
+                    get_full_metadata=get_full, get_outgoing_link_type=get_link
+                ),
+                QueryType=SimpleNamespace(
+                    list=Mock(
+                        return_value=SimpleNamespace(data=[], next_page_token=None)
+                    )
+                ),
             ),
         )
     )
     service = DependencyGraphService(client=client)
     analysis = context(max_depth=1)
     action = service._add_node(
-        analysis, "action-type", "UpdateEmployee",
-        {"ontology_rid": "ontology", "action_type": "UpdateEmployee"}, True,
+        analysis,
+        "action-type",
+        "UpdateEmployee",
+        {"ontology_rid": "ontology", "action_type": "UpdateEmployee"},
+        True,
     )
-    analysis.caches[("action-metadata", "ontology", "feature", "UpdateEmployee")] = (metadata, "operation")
-    service._discover_bfs(DependencyTarget("action-type", action.identifiers, action.display_name, action.id), analysis, "both")
-    property_node = next(node for node in analysis.nodes.values() if node.kind == "property")
-    link_node = next(node for node in analysis.nodes.values() if node.kind == "link-type")
+    analysis.caches[("action-metadata", "ontology", "feature", "UpdateEmployee")] = (
+        metadata,
+        "operation",
+    )
+    service._discover_bfs(
+        DependencyTarget(
+            "action-type", action.identifiers, action.display_name, action.id
+        ),
+        analysis,
+        "both",
+    )
+    property_node = next(
+        node for node in analysis.nodes.values() if node.kind == "property"
+    )
+    link_node = next(
+        node for node in analysis.nodes.values() if node.kind == "link-type"
+    )
     assert property_node.identifiers["object_type"] == "Employee"
     assert link_node.identifiers["object_type"] == "Employee"
     assert get_full.called
@@ -1221,23 +1361,44 @@ def test_production_bfs_dispatches_action_derived_property_and_link_collectors()
 def test_real_depth_cutoff_terminalizes_undispatched_frontier_surfaces():
     service = DependencyGraphService(client=SimpleNamespace())
     analysis = context(max_depth=1)
-    root = service._add_node(analysis, "generic-resource", "root", {"resource_rid": "root"}, True)
-    child = service._add_node(analysis, "generic-resource", "child", {"resource_rid": "child"})
-    leaf = service._add_node(analysis, "generic-resource", "leaf", {"resource_rid": "leaf"})
+    root = service._add_node(
+        analysis, "generic-resource", "root", {"resource_rid": "root"}, True
+    )
+    child = service._add_node(
+        analysis, "generic-resource", "child", {"resource_rid": "child"}
+    )
+    leaf = service._add_node(
+        analysis, "generic-resource", "leaf", {"resource_rid": "leaf"}
+    )
     service._add_edge(analysis, root.id, child.id, "container-member", [])
     service._add_edge(analysis, child.id, leaf.id, "container-member", [])
     service._collect_target = lambda target, active_context: None
-    service._discover_bfs(DependencyTarget("generic-resource", root.identifiers, "root", root.id), analysis, "both")
-    leaf_records = [record for record in analysis.coverage_records.values() if record.subject_node_id == leaf.id]
+    service._discover_bfs(
+        DependencyTarget("generic-resource", root.identifiers, "root", root.id),
+        analysis,
+        "both",
+    )
+    leaf_records = [
+        record
+        for record in analysis.coverage_records.values()
+        if record.subject_node_id == leaf.id
+    ]
     assert leaf_records
-    assert all(record.status in {"unsupported", "budget-exhausted"} for record in leaf_records)
-    assert any(gap.target == leaf.id and gap.coverage == "budget-exhausted" for gap in analysis.gaps.values())
+    assert all(
+        record.status in {"unsupported", "budget-exhausted"} for record in leaf_records
+    )
+    assert any(
+        gap.target == leaf.id and gap.coverage == "budget-exhausted"
+        for gap in analysis.gaps.values()
+    )
 
 
 def test_budget_exhaustion_terminalizes_each_unfinished_surface():
     service = DependencyGraphService(client=SimpleNamespace())
     analysis = context()
-    node = service._add_node(analysis, "dataset", "dataset", {"resource_rid": "dataset"})
+    node = service._add_node(
+        analysis, "dataset", "dataset", {"resource_rid": "dataset"}
+    )
     first = service._coverage_record(analysis, "dataset", "schedule-runs", node.id)
     second_node = service._add_node(analysis, "build", "build", {"build_rid": "build"})
     second = service._coverage_record(analysis, "build", "build-jobs", second_node.id)
@@ -1249,9 +1410,7 @@ def test_budget_exhaustion_terminalizes_each_unfinished_surface():
 
 
 def test_real_reverse_index_request_exhaustion_is_surface_specific():
-    list_actions = Mock(
-        return_value=SimpleNamespace(data=[], next_page_token="next")
-    )
+    list_actions = Mock(return_value=SimpleNamespace(data=[], next_page_token="next"))
     client = SimpleNamespace(
         ontologies=SimpleNamespace(
             ActionTypeFullMetadata=SimpleNamespace(list=list_actions)
@@ -1287,26 +1446,42 @@ def test_real_reverse_index_request_exhaustion_is_surface_specific():
     list_actions.assert_called_once()
 
 
-def test_dataset_discovery_request_exhaustion_terminalizes_schedule_children(monkeypatch):
+def test_dataset_discovery_request_exhaustion_terminalizes_schedule_children(
+    monkeypatch,
+):
     monkeypatch.setattr(
         "pltr.services.dependency.DatasetService.get_schedule_rids_page",
-        lambda self, **kwargs: {"schedule_rids": ["schedule-a"], "next_page_token": None},
+        lambda self, **kwargs: {
+            "schedule_rids": ["schedule-a"],
+            "next_page_token": None,
+        },
     )
-    detail = Mock(side_effect=AssertionError("detail wrapper must not run after request refusal"))
-    monkeypatch.setattr("pltr.services.dependency.OrchestrationService.get_schedule", detail)
+    detail = Mock(
+        side_effect=AssertionError("detail wrapper must not run after request refusal")
+    )
+    monkeypatch.setattr(
+        "pltr.services.dependency.OrchestrationService.get_schedule", detail
+    )
     service = DependencyGraphService(client=SimpleNamespace())
     analysis = context(max_requests=1)
     root = service._add_node(
-        analysis, "dataset", "root",
-        {"resource_rid": "ri.foundry.main.dataset.root"}, True,
+        analysis,
+        "dataset",
+        "root",
+        {"resource_rid": "ri.foundry.main.dataset.root"},
+        True,
     )
     target = DependencyTarget("dataset", root.identifiers, root.display_name, root.id)
     result = service.analyze(target, analysis)
     child_records = [
-        record for record in result["coverage"]
-        if record["surface"] in {
-            "schedule-detail-action", "schedule-trigger",
-            "schedule-affected-resources", "schedule-runs",
+        record
+        for record in result["coverage"]
+        if record["surface"]
+        in {
+            "schedule-detail-action",
+            "schedule-trigger",
+            "schedule-affected-resources",
+            "schedule-runs",
         }
     ]
     assert len(child_records) == 4
@@ -1341,9 +1516,7 @@ def test_bfs_frontier_request_exhaustion_terminalizes_frontier_surfaces():
             "action_type": "UpdateEmployee",
         },
     )
-    service._add_edge(
-        analysis, root.id, action.id, "action-affects-object", []
-    )
+    service._add_edge(analysis, root.id, action.id, "action-affects-object", [])
 
     original_collect = service._collect_target
 
@@ -1361,7 +1534,9 @@ def test_bfs_frontier_request_exhaustion_terminalizes_frontier_surfaces():
 
     service._collect_target = collect
     service._discover_bfs(
-        DependencyTarget("generic-resource", root.identifiers, root.display_name, root.id),
+        DependencyTarget(
+            "generic-resource", root.identifiers, root.display_name, root.id
+        ),
         analysis,
         "both",
     )
@@ -1483,12 +1658,25 @@ def test_change_assessment_keeps_uncertainty_alongside_verified_impacts():
         "May lag by up to one hour",
     )
     assessment = service._assess_change(
-        "rename output", [{"id": "path", "related_node_id": root.id, "direction": "downstream", "relation_kind": "schedule-produces-resource", "readable_path": "Input"}], analysis
+        "rename output",
+        [
+            {
+                "id": "path",
+                "related_node_id": root.id,
+                "direction": "downstream",
+                "relation_kind": "schedule-produces-resource",
+                "readable_path": "Input",
+            }
+        ],
+        analysis,
     )
 
     assert assessment["ranked_impacts"]
     assert assessment["uncertainty"][0]["reason_code"] == "schedule-index-may-be-stale"
-    assert "Resolve or accept intersecting coverage gaps" in assessment["verification_needed"]
+    assert (
+        "Resolve or accept intersecting coverage gaps"
+        in assessment["verification_needed"]
+    )
 
 
 def _resolver_client():
@@ -1528,9 +1716,7 @@ def _resolver_client():
                 ),
                 QueryType=SimpleNamespace(
                     list=Mock(
-                        return_value=SimpleNamespace(
-                            data=[query], next_page_token=None
-                        )
+                        return_value=SimpleNamespace(data=[query], next_page_token=None)
                     )
                 ),
             ),
@@ -1574,11 +1760,17 @@ def test_all_six_real_resolvers_use_pinned_shaped_results_and_provenance():
     assert targets[2].identifiers["link_type"] == "manager"
     assert targets[5].display_name == "Employees"
     assert all(target.node_id in analysis.nodes for target in targets)
-    assert {operation.read_context_id for operation in analysis.operation_provenance.values()} == {
-        analysis.read_context.id
-    }
-    assert all(operation.request_timeout_seconds <= 30 for operation in analysis.operation_provenance.values())
-    object_calls = client.ontologies.Ontology.ObjectType.get_full_metadata.call_args_list
+    assert {
+        operation.read_context_id
+        for operation in analysis.operation_provenance.values()
+    } == {analysis.read_context.id}
+    assert all(
+        operation.request_timeout_seconds <= 30
+        for operation in analysis.operation_provenance.values()
+    )
+    object_calls = (
+        client.ontologies.Ontology.ObjectType.get_full_metadata.call_args_list
+    )
     assert all(call.kwargs["branch"] == "feature" for call in object_calls)
     assert all(call.kwargs["preview"] is True for call in object_calls)
     assert client.filesystem.Resource.get.call_args.kwargs.get("branch") is None
@@ -1622,7 +1814,9 @@ def test_action_and_query_indexes_forward_second_page_tokens_and_charge_globally
     )
 
 
-def test_schedule_reverse_index_pages_create_per_subject_conditional_records(monkeypatch):
+def test_schedule_reverse_index_pages_create_per_subject_conditional_records(
+    monkeypatch,
+):
     calls = []
 
     def schedules(self, **kwargs):
@@ -1669,21 +1863,31 @@ def test_schedule_reverse_index_pages_create_per_subject_conditional_records(mon
     ]
     assert len(conditional) == 8
     assert all(record["status"] == "unresolved" for record in conditional)
-    assert len(
-        [
-            gap
-            for gap in result["gaps"]
-            if gap["reason_code"] == "collector-did-not-report"
-            and gap["target"] in schedule_ids
-        ]
-    ) == 8
+    assert (
+        len(
+            [
+                gap
+                for gap in result["gaps"]
+                if gap["reason_code"] == "collector-did-not-report"
+                and gap["target"] in schedule_ids
+            ]
+        )
+        == 8
+    )
     stale = [
-        gap for gap in result["gaps"] if gap["reason_code"] == "schedule-index-may-be-stale"
+        gap
+        for gap in result["gaps"]
+        if gap["reason_code"] == "schedule-index-may-be-stale"
     ]
     assert len(stale) == 1
-    assert next(
-        record for record in result["coverage"] if record["surface"] == "schedule-reverse-index"
-    )["status"] == "partial"
+    assert (
+        next(
+            record
+            for record in result["coverage"]
+            if record["surface"] == "schedule-reverse-index"
+        )["status"]
+        == "partial"
+    )
 
 
 def test_schedule_runs_and_build_jobs_forward_page_tokens_and_share_budget():
@@ -1768,9 +1972,7 @@ def test_every_paginator_refuses_sdk_calls_after_global_capacity_is_spent(
 
     if collector == "action-index":
         item = SimpleNamespace(action_type=SimpleNamespace(api_name="Action"))
-        first_page.return_value = SimpleNamespace(
-            data=[item], next_page_token="next"
-        )
+        first_page.return_value = SimpleNamespace(data=[item], next_page_token="next")
         service = DependencyGraphService(
             client=SimpleNamespace(
                 ontologies=SimpleNamespace(
@@ -1783,15 +1985,11 @@ def test_every_paginator_refuses_sdk_calls_after_global_capacity_is_spent(
         assert len(result["entries"]) == 1
     elif collector == "query-index":
         item = SimpleNamespace(api_name="Query")
-        first_page.return_value = SimpleNamespace(
-            data=[item], next_page_token="next"
-        )
+        first_page.return_value = SimpleNamespace(data=[item], next_page_token="next")
         service = DependencyGraphService(
             client=SimpleNamespace(
                 ontologies=SimpleNamespace(
-                    Ontology=SimpleNamespace(
-                        QueryType=SimpleNamespace(list=first_page)
-                    )
+                    Ontology=SimpleNamespace(QueryType=SimpleNamespace(list=first_page))
                 )
             )
         )
@@ -1839,12 +2037,8 @@ def test_every_paginator_refuses_sdk_calls_after_global_capacity_is_spent(
             "next_page_token": "next",
         }
         service = DependencyGraphService(client=SimpleNamespace())
-        build = service._add_node(
-            analysis, "build", "build", {"build_rid": "build"}
-        )
-        record = service._coverage_record(
-            analysis, "build", "build-jobs", build.id
-        )
+        build = service._add_node(analysis, "build", "build", {"build_rid": "build"})
+        record = service._coverage_record(analysis, "build", "build-jobs", build.id)
         service._collect_jobs(
             analysis,
             build,
@@ -1934,9 +2128,15 @@ def test_two_submitted_builds_create_subject_local_build_job_and_output_coverage
         service._coverage_record(analysis, "job", "typed-outputs", node.id)
         for node in job_nodes
     ]
-    assert all(record.status == "covered" and record.evidence_ids for record in build_records)
-    assert all(record.status == "covered" and record.evidence_ids for record in job_records)
-    assert all(record.status == "partial" and record.evidence_ids for record in output_records)
+    assert all(
+        record.status == "covered" and record.evidence_ids for record in build_records
+    )
+    assert all(
+        record.status == "covered" and record.evidence_ids for record in job_records
+    )
+    assert all(
+        record.status == "partial" and record.evidence_ids for record in output_records
+    )
     assert {record.parent_record_id for record in job_records} == {
         record.id for record in build_records
     }
@@ -2006,16 +2206,19 @@ def test_deep_conditional_coverage_is_subject_local_when_one_collector_is_suppre
 
     original = getattr(service, collector)
     if collector == "_collect_build":
+
         def selective(context_value, build_node, orchestration_value, record):
             if build_node.identifiers["build_rid"] == "build-b":
                 return
             original(context_value, build_node, orchestration_value, record)
     elif collector == "_collect_jobs":
+
         def selective(context_value, build_node, orchestration_value, record):
             if build_node.identifiers["build_rid"] == "build-b":
                 return
             original(context_value, build_node, orchestration_value, record)
     else:
+
         def selective(
             context_value,
             build_node,
@@ -2036,6 +2239,7 @@ def test_deep_conditional_coverage_is_subject_local_when_one_collector_is_suppre
                 job_index,
                 record,
             )
+
     monkeypatch.setattr(service, collector, selective)
 
     service._collect_runs(analysis, schedule, orchestration, runs_record)
@@ -2133,12 +2337,14 @@ def test_actual_dataset_wrapper_preserves_retryable_sdk_cause_as_local_gap():
     result = service.analyze(target, analysis)
 
     reverse = next(
-        record for record in result["coverage"]
+        record
+        for record in result["coverage"]
         if record["subject_node_id"] == target.node_id
         and record["surface"] == "schedule-reverse-index"
     )
     gap = next(
-        gap for gap in result["gaps"]
+        gap
+        for gap in result["gaps"]
         if gap["target"] == target.node_id
         and gap["surface"] == "schedule-reverse-index"
     )
@@ -2175,20 +2381,30 @@ def test_actual_orchestration_wrapper_preserves_inaccessible_cause_on_schedule()
 
     result = service.analyze(target, analysis)
 
-    schedule = next(node for node in result["graph"]["nodes"] if node["kind"] == "schedule")
+    schedule = next(
+        node for node in result["graph"]["nodes"] if node["kind"] == "schedule"
+    )
     denied = [
-        gap for gap in result["gaps"]
-        if gap["target"] == schedule["id"]
-        and gap["reason_code"] == "permission-denied"
+        gap
+        for gap in result["gaps"]
+        if gap["target"] == schedule["id"] and gap["reason_code"] == "permission-denied"
     ]
     assert {gap["surface"] for gap in denied} == {
         "schedule-detail-action",
         "schedule-trigger",
     }
-    assert all(gap["coverage"] == "inaccessible" and not gap["retryable"] for gap in denied)
-    reverse = next(record for record in result["coverage"] if record["surface"] == "schedule-reverse-index")
+    assert all(
+        gap["coverage"] == "inaccessible" and not gap["retryable"] for gap in denied
+    )
+    reverse = next(
+        record
+        for record in result["coverage"]
+        if record["surface"] == "schedule-reverse-index"
+    )
     assert reverse["status"] == "partial"
-    assert any(gap["reason_code"] == "schedule-index-may-be-stale" for gap in result["gaps"])
+    assert any(
+        gap["reason_code"] == "schedule-index-may-be-stale" for gap in result["gaps"]
+    )
 
 
 def test_actual_dataset_wrapper_plain_invariant_error_propagates_without_unknown_gap():
@@ -2220,13 +2436,15 @@ def test_output_budget_failure_is_job_local_and_parent_job_evidence_is_preserved
     orchestration = SimpleNamespace(
         get_build_jobs=Mock(
             return_value={
-                "jobs": [{
-                    "rid": "job",
-                    "outputs": [
-                        {"type": "datasetJobOutput", "dataset_rid": "dataset-a"},
-                        {"type": "datasetJobOutput", "dataset_rid": "dataset-b"},
-                    ],
-                }],
+                "jobs": [
+                    {
+                        "rid": "job",
+                        "outputs": [
+                            {"type": "datasetJobOutput", "dataset_rid": "dataset-a"},
+                            {"type": "datasetJobOutput", "dataset_rid": "dataset-b"},
+                        ],
+                    }
+                ],
                 "next_page_token": None,
             }
         )
@@ -2253,22 +2471,35 @@ def test_output_budget_failure_is_job_local_and_parent_job_evidence_is_preserved
 def test_nested_build_budget_does_not_reclassify_successful_schedule_runs():
     service = DependencyGraphService(client=SimpleNamespace())
     analysis = context(max_requests=1)
-    schedule = service._add_node(analysis, "schedule", "schedule", {"schedule_rid": "schedule"})
-    record = service._coverage_record(analysis, "schedule", "schedule-runs", schedule.id)
+    schedule = service._add_node(
+        analysis, "schedule", "schedule", {"schedule_rid": "schedule"}
+    )
+    record = service._coverage_record(
+        analysis, "schedule", "schedule-runs", schedule.id
+    )
     orchestration = SimpleNamespace(
         get_schedule_runs=Mock(
             return_value={
-                "runs": [{"rid": "run", "result": {"type": "submitted", "build_rid": "build"}}],
+                "runs": [
+                    {
+                        "rid": "run",
+                        "result": {"type": "submitted", "build_rid": "build"},
+                    }
+                ],
                 "next_page_token": None,
             }
         ),
-        get_build=Mock(side_effect=AssertionError("request budget must refuse child SDK call")),
+        get_build=Mock(
+            side_effect=AssertionError("request budget must refuse child SDK call")
+        ),
     )
 
     service._collect_runs(analysis, schedule, orchestration, record)
 
     build = next(node for node in analysis.nodes.values() if node.kind == "build")
-    build_record = service._coverage_record(analysis, "build", "submitted-build", build.id)
+    build_record = service._coverage_record(
+        analysis, "build", "submitted-build", build.id
+    )
     assert record.status == "covered" and record.evidence_ids
     assert build_record.status == "budget-exhausted"
     assert not any(
@@ -2284,7 +2515,9 @@ def test_nested_job_budget_preserves_successful_build_evidence():
     record = service._coverage_record(analysis, "build", "submitted-build", build.id)
     orchestration = SimpleNamespace(
         get_build=Mock(return_value={"rid": "build", "job_rids": ["job"]}),
-        get_build_jobs=Mock(side_effect=AssertionError("request budget must refuse jobs SDK call")),
+        get_build_jobs=Mock(
+            side_effect=AssertionError("request budget must refuse jobs SDK call")
+        ),
     )
 
     service._collect_build(analysis, build, orchestration, record)
@@ -2300,7 +2533,9 @@ def test_nested_job_budget_preserves_successful_build_evidence():
     )
 
 
-def test_nested_schedule_budget_preserves_reverse_index_evidence_and_stale_gap(monkeypatch):
+def test_nested_schedule_budget_preserves_reverse_index_evidence_and_stale_gap(
+    monkeypatch,
+):
     monkeypatch.setattr(
         "pltr.services.dependency.DatasetService.get_schedule_rids_page",
         lambda self, **kwargs: {
@@ -2328,10 +2563,22 @@ def test_nested_schedule_budget_preserves_reverse_index_evidence_and_stale_gap(m
 
     result = service.analyze(target, analysis)
 
-    reverse = next(record for record in result["coverage"] if record["surface"] == "schedule-reverse-index")
-    schedule = next(node for node in result["graph"]["nodes"] if node["kind"] == "schedule")
+    reverse = next(
+        record
+        for record in result["coverage"]
+        if record["surface"] == "schedule-reverse-index"
+    )
+    schedule = next(
+        node for node in result["graph"]["nodes"] if node["kind"] == "schedule"
+    )
     assert reverse["status"] == "partial" and reverse["evidence_ids"]
-    assert sum(gap["reason_code"] == "schedule-index-may-be-stale" for gap in result["gaps"]) == 1
+    assert (
+        sum(
+            gap["reason_code"] == "schedule-index-may-be-stale"
+            for gap in result["gaps"]
+        )
+        == 1
+    )
     assert any(
         gap["target"] == schedule["id"]
         and gap["surface"] == "schedule-detail-action"
@@ -2339,8 +2586,7 @@ def test_nested_schedule_budget_preserves_reverse_index_evidence_and_stale_gap(m
         for gap in result["gaps"]
     )
     assert not any(
-        gap["target"] == target.node_id
-        and gap["reason_code"] == "budget-exhausted"
+        gap["target"] == target.node_id and gap["reason_code"] == "budget-exhausted"
         for gap in result["gaps"]
     )
 
@@ -2372,9 +2618,7 @@ def test_schedule_budget_partial_evidence_never_crosses_schedule_subjects():
         [evidence_a.id],
     )
     records = {
-        surface: service._coverage_record(
-            analysis, "schedule", surface, schedule_b.id
-        )
+        surface: service._coverage_record(analysis, "schedule", surface, schedule_b.id)
         for surface in (
             "schedule-detail-action",
             "schedule-trigger",
@@ -2417,9 +2661,7 @@ def test_unreachable_query_definition_is_not_walked_or_charged():
         def type(self):
             raise AssertionError("unreachable definition was inspected")
 
-    query = SimpleNamespace(
-        type_references={"UNREACHABLE": ExplodingDefinition()}
-    )
+    query = SimpleNamespace(type_references={"UNREACHABLE": ExplodingDefinition()})
     service = DependencyGraphService(client=SimpleNamespace())
     analysis = context(max_items=1)
 
@@ -2476,7 +2718,9 @@ def test_action_metadata_walk_has_independent_pathological_depth_bound():
         analysis,
     )
 
-    record = service._coverage_record(analysis, "action-type", "full-action-metadata", node.id)
+    record = service._coverage_record(
+        analysis, "action-type", "full-action-metadata", node.id
+    )
     assert record.status == "budget-exhausted"
     gap = next(
         gap
@@ -2486,10 +2730,7 @@ def test_action_metadata_walk_has_independent_pathological_depth_bound():
         and gap.reason_code == "budget-exhausted"
     )
     assert gap.budget_snapshot["limits"]["depth"] == 1
-    assert (
-        gap.budget_snapshot["limits"]["metadata_depth"]
-        == METADATA_WALK_MAX_DEPTH
-    )
+    assert gap.budget_snapshot["limits"]["metadata_depth"] == METADATA_WALK_MAX_DEPTH
 
 
 def test_action_metadata_exhaustion_preserves_only_the_current_walk_references():
@@ -2515,13 +2756,10 @@ def test_action_metadata_exhaustion_preserves_only_the_current_walk_references()
     analysis = context(max_items=1)
 
     with pytest.raises(BudgetExhausted) as exhausted:
-        service._extract_action_references(
-            metadata, "ontology", analysis, "operation"
-        )
+        service._extract_action_references(metadata, "ontology", analysis, "operation")
 
     assert {
-        (kind, name)
-        for kind, name, _, _ in exhausted.value.partial_action_references
+        (kind, name) for kind, name, _, _ in exhausted.value.partial_action_references
     } == {("object-type", "Employee")}
 
 
@@ -2597,8 +2835,7 @@ def test_query_metadata_has_an_independent_pathological_depth_bound():
 
     assert exhausted.value.dimension == "metadata_depth"
     assert (
-        exhausted.value.snapshot["limits"]["metadata_depth"]
-        == METADATA_WALK_MAX_DEPTH
+        exhausted.value.snapshot["limits"]["metadata_depth"] == METADATA_WALK_MAX_DEPTH
     )
 
 
@@ -2633,9 +2870,9 @@ def test_query_metadata_time_budget_is_subject_local():
         analysis, "query-type", "query-related-function-metadata", node.id
     )
     gap = next(
-        gap for gap in analysis.gaps.values()
-        if gap.target == node.id
-        and gap.surface == "query-related-function-metadata"
+        gap
+        for gap in analysis.gaps.values()
+        if gap.target == node.id and gap.surface == "query-related-function-metadata"
     )
     assert record.status == "budget-exhausted"
     assert gap.reason_code == "budget-exhausted"
@@ -2713,9 +2950,16 @@ def test_object_metadata_collects_interface_link_and_shared_property_mappings():
         "property",
         "link-type",
     }
-    assert len(
-        [edge for edge in analysis.edges.values() if edge.relation_kind == "container-member"]
-    ) >= 4
+    assert (
+        len(
+            [
+                edge
+                for edge in analysis.edges.values()
+                if edge.relation_kind == "container-member"
+            ]
+        )
+        >= 4
+    )
     assert not analysis.gaps
 
 
@@ -2788,18 +3032,26 @@ def test_properties_v2_materializes_every_reachable_backing_property_and_gaps_un
         if node.kind == "property"
     }
     assert backing_properties == {"name", "office", "email", "contact", "regions"}
-    assert len(
-        [
-            edge
-            for edge in analysis.edges.values()
-            if analysis.nodes[edge.source].kind == "interface-property-type"
-            and analysis.nodes[edge.target].kind == "property"
-        ]
-    ) == 5
+    assert (
+        len(
+            [
+                edge
+                for edge in analysis.edges.values()
+                if analysis.nodes[edge.source].kind == "interface-property-type"
+                and analysis.nodes[edge.target].kind == "property"
+            ]
+        )
+        == 5
+    )
     evidence = [analysis.evidence[evidence_id] for evidence_id in evidence_ids]
-    assert any("officeCity.structFieldOfProperty.city" in item.locator for item in evidence)
+    assert any(
+        "officeCity.structFieldOfProperty.city" in item.locator for item in evidence
+    )
     assert any("contact.mapping.phone.phone" in item.locator for item in evidence)
-    assert any("primaryRegion.implementation.propertyApiName" in item.locator for item in evidence)
+    assert any(
+        "primaryRegion.implementation.propertyApiName" in item.locator
+        for item in evidence
+    )
     unknown = next(
         gap
         for gap in analysis.gaps.values()
@@ -2865,13 +3117,16 @@ def test_reverse_action_shape_gap_remains_partial_for_each_subject_when_deduped(
         and edge.target == targets[0].node_id
         for edge in analysis.edges.values()
     )
-    assert len(
-        [
-            gap
-            for gap in analysis.gaps.values()
-            if gap.reason_code == "unknown-action-logic-rule:futureRule"
-        ]
-    ) == 1
+    assert (
+        len(
+            [
+                gap
+                for gap in analysis.gaps.values()
+                if gap.reason_code == "unknown-action-logic-rule:futureRule"
+            ]
+        )
+        == 1
+    )
 
 
 def test_reverse_action_budget_exhaustion_retains_completed_page_evidence():
@@ -2922,8 +3177,7 @@ def test_reverse_action_budget_exhaustion_retains_completed_page_evidence():
         for evidence_id in record.evidence_ids
     )
     assert any(
-        edge.relation_kind == "action-affects-object"
-        and edge.target == target_node.id
+        edge.relation_kind == "action-affects-object" and edge.target == target_node.id
         for edge in analysis.edges.values()
     )
     gap = next(
@@ -2972,8 +3226,14 @@ def test_reverse_action_walk_exhaustion_retains_only_target_evidence():
     )
     analysis.caches[("action-index", "test", "ontology", "feature")] = {
         "entries": [
-            (SimpleNamespace(action_type=SimpleNamespace(api_name="First")), operation_id),
-            (SimpleNamespace(action_type=SimpleNamespace(api_name="Second")), operation_id),
+            (
+                SimpleNamespace(action_type=SimpleNamespace(api_name="First")),
+                operation_id,
+            ),
+            (
+                SimpleNamespace(action_type=SimpleNamespace(api_name="Second")),
+                operation_id,
+            ),
         ],
         "by_name": {},
         "incomplete_error": None,
@@ -3029,9 +3289,9 @@ def test_reverse_query_walk_exhaustion_retains_only_target_leaves():
         target_node.id,
     )
     assert record.status == "budget-exhausted"
-    assert [analysis.evidence[evidence_id].locator for evidence_id in record.evidence_ids] == [
-        "output.employee"
-    ]
+    assert [
+        analysis.evidence[evidence_id].locator for evidence_id in record.evidence_ids
+    ] == ["output.employee"]
 
 
 def test_nested_output_budget_dedupes_and_materializes_only_linear_co_output_edges():
@@ -3052,11 +3312,15 @@ def test_nested_output_budget_dedupes_and_materializes_only_linear_co_output_edg
     )
 
     co_outputs = [
-        edge for edge in analysis.edges.values() if edge.relation_kind == "build-co-output"
+        edge
+        for edge in analysis.edges.values()
+        if edge.relation_kind == "build-co-output"
     ]
     assert analysis.budget.used_items == 4
     assert len(co_outputs) == 2
-    assert len([node for node in analysis.nodes.values() if node.kind == "dataset"]) == 3
+    assert (
+        len([node for node in analysis.nodes.values() if node.kind == "dataset"]) == 3
+    )
 
 
 def test_trigger_recursion_and_nested_trigger_items_share_global_bounds():
@@ -3070,9 +3334,7 @@ def test_trigger_recursion_and_nested_trigger_items_share_global_bounds():
         "triggers": [
             {
                 "type": "or",
-                "triggers": [
-                    {"type": "and", "triggers": [{"type": "manual"}]}
-                ],
+                "triggers": [{"type": "and", "triggers": [{"type": "manual"}]}],
             }
         ],
     }
@@ -3097,9 +3359,7 @@ def test_trigger_metadata_has_an_independent_pathological_depth_bound():
         trigger = {"type": "and", "triggers": [trigger]}
 
     with pytest.raises(BudgetExhausted) as exhausted:
-        service._collect_trigger(
-            analysis, schedule, "operation", trigger, "trigger"
-        )
+        service._collect_trigger(analysis, schedule, "operation", trigger, "trigger")
 
     assert exhausted.value.dimension == "metadata_depth"
 
@@ -3243,18 +3503,28 @@ def test_impact_category_tables_are_closed_complete_and_override_specific():
             IMPACT_CATEGORY_CHANGE_OVERRIDES.items()
         )
     )
-    assert DependencyGraphService._resolve_impact_category(
-        "declared-link", "adjacent", "rename"
-    ) == "contract-break"
-    assert DependencyGraphService._resolve_impact_category(
-        "declared-link", "adjacent", None
-    ) == "schema-break"
-    assert DependencyGraphService._resolve_impact_category(
-        "query-returns-object", "upstream", "rename"
-    ) == "semantic-break"
-    assert DependencyGraphService._resolve_change_type(
-        "rename the field", None
-    ) == ("rename", "inferred")
+    assert (
+        DependencyGraphService._resolve_impact_category(
+            "declared-link", "adjacent", "rename"
+        )
+        == "contract-break"
+    )
+    assert (
+        DependencyGraphService._resolve_impact_category(
+            "declared-link", "adjacent", None
+        )
+        == "schema-break"
+    )
+    assert (
+        DependencyGraphService._resolve_impact_category(
+            "query-returns-object", "upstream", "rename"
+        )
+        == "semantic-break"
+    )
+    assert DependencyGraphService._resolve_change_type("rename the field", None) == (
+        "rename",
+        "inferred",
+    )
     assert DependencyGraphService._resolve_change_type(
         "rename the field", "type-change"
     ) == ("type-change", "explicit")
@@ -3386,9 +3656,7 @@ def test_verification_aggregates_mixed_impacts_and_gap_by_subject_precedence():
         "Action metadata could not be resolved",
     )
 
-    verification = service._classify_agent_results(analysis, impacts)[
-        "verification"
-    ]
+    verification = service._classify_agent_results(analysis, impacts)["verification"]
     subject_entries = [
         (bucket, item)
         for bucket, items in verification.items()
@@ -3531,7 +3799,6 @@ def test_dynamic_unsupported_gap_with_non_matrix_reason_stays_must_and_non_clean
     assert agent["status"] == "needs-verification"
 
 
-
 def test_supported_complete_coverage_stays_clean_and_ci_eligible():
     """A target with genuinely complete, supported coverage (no gaps at all)
     stays clean and CI-eligible -- the routing change must not regress the
@@ -3593,7 +3860,10 @@ def test_scores_are_versioned_deterministic_and_budget_sensitive():
     assert release_explicit["change_type_source"] == "explicit"
     assert blast_absent["budget_fingerprint"] == blast_explicit["budget_fingerprint"]
     assert blast_changed["budget_fingerprint"] != blast_absent["budget_fingerprint"]
-    assert all(0 <= score <= 100 for score in (blast_absent["score"], release_explicit["score"]))
+    assert all(
+        0 <= score <= 100
+        for score in (blast_absent["score"], release_explicit["score"])
+    )
 
 
 def test_unclassified_free_text_change_still_produces_inferred_release_risk():
@@ -3629,9 +3899,10 @@ def test_unclassified_free_text_change_still_produces_inferred_release_risk():
 def test_budget_fingerprint_changes_for_every_discovery_limit(budget_override):
     baseline = DependencyGraphService._budget_fingerprint(context())
 
-    assert DependencyGraphService._budget_fingerprint(
-        context(**budget_override)
-    ) != baseline
+    assert (
+        DependencyGraphService._budget_fingerprint(context(**budget_override))
+        != baseline
+    )
 
 
 def test_action_and_query_contracts_project_only_from_cached_metadata():
@@ -3671,18 +3942,12 @@ def test_action_and_query_contracts_project_only_from_cached_metadata():
     function = service._add_node(
         analysis, "function", "validate", {"function_rid": "function"}
     )
-    service._add_edge(
-        analysis, action.id, function.id, "action-uses-function", []
-    )
+    service._add_edge(analysis, action.id, function.id, "action-uses-function", [])
     service._add_edge(
         analysis, employee_filter.id, query.id, "query-accepts-object", []
     )
-    service._add_edge(
-        analysis, query.id, employee.id, "query-returns-object", []
-    )
-    service._add_edge(
-        analysis, employee.id, consumer.id, "query-accepts-object", []
-    )
+    service._add_edge(analysis, query.id, employee.id, "query-returns-object", [])
+    service._add_edge(analysis, employee.id, consumer.id, "query-accepts-object", [])
     service._add_gap(
         analysis,
         employee.id,
@@ -3746,7 +4011,7 @@ def test_action_and_query_contracts_project_only_from_cached_metadata():
                     "data_type": "object",
                     "required": False,
                 },
-                {"parameter_id": "employee", "data_type": "object", "required": True}
+                {"parameter_id": "employee", "data_type": "object", "required": True},
             ],
             "writes_deletes": [
                 {"operation": "write", "rule_index": 0, "type": "modifyObject"}
@@ -3771,7 +4036,7 @@ def test_action_and_query_contracts_project_only_from_cached_metadata():
             "likely_downstream_consumers": ["SummarizeEmployee"],
             "unresolved_consumers": [
                 "Query consumer metadata is unavailable for FindEmployee",
-                "Reverse query consumer metadata is unavailable for Employee"
+                "Reverse query consumer metadata is unavailable for Employee",
             ],
         }
     ]
@@ -3872,7 +4137,7 @@ def test_artifact_diff_classifies_removed_edges_by_subject_local_budget_state():
                     "target": sibling_target["id"],
                     "coverage": "verified",
                 },
-            ]
+            ],
         },
         "budget": {"limits": analysis.budget.snapshot()["limits"]},
         "artifact": {"analysis_id": "dep-baseline"},
@@ -4063,9 +4328,7 @@ def test_one_way_paths_continue_through_adjacent_prefix(
     source, target = (
         (middle.id, leaf.id) if causal_source_is_middle else (leaf.id, middle.id)
     )
-    service._add_edge(
-        analysis, source, target, "schedule-consumes-resource", []
-    )
+    service._add_edge(analysis, source, target, "schedule-consumes-resource", [])
 
     paths = service._derive_paths(analysis, root.id, direction)
 
@@ -4129,9 +4392,7 @@ def test_blast_groups_and_score_ignore_change_aware_impact_category():
     employee = service._add_node(
         analysis, "object-type", "Employee", {"object_type": "Employee"}
     )
-    service._add_edge(
-        analysis, action.id, employee.id, "action-affects-object", []
-    )
+    service._add_edge(analysis, action.id, employee.id, "action-affects-object", [])
     ranked = service._rank_paths(
         analysis, service._derive_paths(analysis, action.id, "downstream"), None
     )
@@ -4166,8 +4427,7 @@ def test_blast_groups_and_score_ignore_change_aware_impact_category():
 
     assert no_change["blast_radius"] == changed["blast_radius"]
     assert (
-        no_change_impacts[0]["impact_category"]
-        != changed_impacts[0]["impact_category"]
+        no_change_impacts[0]["impact_category"] != changed_impacts[0]["impact_category"]
     )
     assert no_change["release_risk"]["score"] is None
     assert changed["release_risk"]["score"] is not None
@@ -4184,9 +4444,10 @@ def test_query_contract_projection_resolves_recursive_scc_output_without_sdk_cal
         query.api_name,
         {"ontology_rid": "ontology", "query_type": query.api_name},
     )
-    analysis.caches[
-        ("query-metadata", "ontology", "feature", query.api_name)
-    ] = (query, "operation")
+    analysis.caches[("query-metadata", "ontology", "feature", query.api_name)] = (
+        query,
+        "operation",
+    )
 
     contracts = service._project_action_query_contracts(analysis, [])
 
@@ -4224,22 +4485,29 @@ def test_diff_comparability_requires_same_target_and_all_budget_limits():
         "budget": {"limits": analysis.budget.snapshot()["limits"]},
     }
 
-    assert service._diff_graphs(
-        analysis, baseline, [], {"budget_exhausted": False}, target
-    )["comparable"] is True
+    assert (
+        service._diff_graphs(
+            analysis, baseline, [], {"budget_exhausted": False}, target
+        )["comparable"]
+        is True
+    )
     different_target = {**baseline, "target": {**baseline["target"], "kind": "table"}}
-    assert service._diff_graphs(
-        analysis, different_target, [], {"budget_exhausted": False}, target
-    )["comparable"] is False
+    assert (
+        service._diff_graphs(
+            analysis, different_target, [], {"budget_exhausted": False}, target
+        )["comparable"]
+        is False
+    )
     different_budget = {
         **baseline,
-        "budget": {
-            "limits": {**baseline["budget"]["limits"], "depth": 99}
-        },
+        "budget": {"limits": {**baseline["budget"]["limits"], "depth": 99}},
     }
-    assert service._diff_graphs(
-        analysis, different_budget, [], {"budget_exhausted": False}, target
-    )["comparable"] is False
+    assert (
+        service._diff_graphs(
+            analysis, different_budget, [], {"budget_exhausted": False}, target
+        )["comparable"]
+        is False
+    )
 
 
 def test_removed_edge_budget_uncertainty_propagates_beyond_frontier():
@@ -4326,8 +4594,7 @@ def test_removed_edge_budget_uncertainty_propagates_beyond_frontier():
         {"edge_id": "edge-one-two", "possibly_budget_truncated": True},
     ]
     assert all(
-        item["possibly_budget_truncated"] is False
-        for item in complete["removed_edges"]
+        item["possibly_budget_truncated"] is False for item in complete["removed_edges"]
     )
 
 
@@ -4416,13 +4683,9 @@ def test_global_budget_exhaustion_terminalizes_every_queued_branch_not_just_curr
             }
         ],
         "graph": {
-            "nodes": [
-                service._serialize(node) for node in analysis.nodes.values()
-            ]
+            "nodes": [service._serialize(node) for node in analysis.nodes.values()]
             + [omitted_one, omitted_two],
-            "edges": [
-                service._serialize(edge) for edge in analysis.edges.values()
-            ]
+            "edges": [service._serialize(edge) for edge in analysis.edges.values()]
             + [
                 {
                     "id": "edge-unvisited-one",
@@ -4447,6 +4710,9 @@ def test_global_budget_exhaustion_terminalizes_every_queued_branch_not_just_curr
         analysis, baseline, [], {"budget_exhausted": True}, target
     )
 
-    removed = {item["edge_id"]: item["possibly_budget_truncated"] for item in diff["removed_edges"]}
+    removed = {
+        item["edge_id"]: item["possibly_budget_truncated"]
+        for item in diff["removed_edges"]
+    }
     assert removed["edge-unvisited-one"] is True
     assert removed["edge-one-two"] is True

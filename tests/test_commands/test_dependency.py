@@ -30,9 +30,7 @@ def independent_payload_digest(document):
     agent = payload.get("agent")
     if isinstance(agent, dict):
         payload["agent"] = {
-            key: value
-            for key, value in agent.items()
-            if key != "artifact_reference"
+            key: value for key, value in agent.items() if key != "artifact_reference"
         }
     canonical = json.dumps(
         payload,
@@ -45,7 +43,11 @@ def independent_payload_digest(document):
 
 def analysis_result():
     return {
-        "target": {"id": "object:Employee", "kind": "object-type", "display_name": "Employee"},
+        "target": {
+            "id": "object:Employee",
+            "kind": "object-type",
+            "display_name": "Employee",
+        },
         "read_contexts": [
             {
                 "id": "ctx",
@@ -56,7 +58,9 @@ def analysis_result():
         ],
         "graph": {
             "nodes": [{"id": "object:Employee", "kind": "object-type"}],
-            "edges": [{"id": "edge-1", "source": "query:q", "target": "object:Employee"}],
+            "edges": [
+                {"id": "edge-1", "source": "query:q", "target": "object:Employee"}
+            ],
         },
         "paths": [
             {
@@ -84,7 +88,9 @@ def analysis_result():
                 "message": "One optional reverse lookup timed out.",
             }
         ],
-        "evidence": [{"id": "ev-1", "operation_provenance_id": "op-1", "locator": "output"}],
+        "evidence": [
+            {"id": "ev-1", "operation_provenance_id": "op-1", "locator": "output"}
+        ],
         "operation_provenance": [
             {
                 "id": "op-1",
@@ -234,12 +240,42 @@ def service():
 @pytest.mark.parametrize(
     ("arguments", "resolver", "resolver_arguments", "ontology_rid"),
     [
-        (["object-type", "ri.ontology", "Employee"], "resolve_object_type", ("ri.ontology", "Employee"), "ri.ontology"),
-        (["property", "ri.ontology", "Employee", "email"], "resolve_property", ("ri.ontology", "Employee", "email"), "ri.ontology"),
-        (["link-type", "ri.ontology", "Employee", "manager"], "resolve_link_type", ("ri.ontology", "Employee", "manager"), "ri.ontology"),
-        (["action-type", "ri.ontology", "promote"], "resolve_action_type", ("ri.ontology", "promote"), "ri.ontology"),
-        (["query-type", "ri.ontology", "findEmployee"], "resolve_query_type", ("ri.ontology", "findEmployee"), "ri.ontology"),
-        (["resource", "ri.foundry.main.dataset.abc"], "resolve_resource", ("ri.foundry.main.dataset.abc",), None),
+        (
+            ["object-type", "ri.ontology", "Employee"],
+            "resolve_object_type",
+            ("ri.ontology", "Employee"),
+            "ri.ontology",
+        ),
+        (
+            ["property", "ri.ontology", "Employee", "email"],
+            "resolve_property",
+            ("ri.ontology", "Employee", "email"),
+            "ri.ontology",
+        ),
+        (
+            ["link-type", "ri.ontology", "Employee", "manager"],
+            "resolve_link_type",
+            ("ri.ontology", "Employee", "manager"),
+            "ri.ontology",
+        ),
+        (
+            ["action-type", "ri.ontology", "promote"],
+            "resolve_action_type",
+            ("ri.ontology", "promote"),
+            "ri.ontology",
+        ),
+        (
+            ["query-type", "ri.ontology", "findEmployee"],
+            "resolve_query_type",
+            ("ri.ontology", "findEmployee"),
+            "ri.ontology",
+        ),
+        (
+            ["resource", "ri.foundry.main.dataset.abc"],
+            "resolve_resource",
+            ("ri.foundry.main.dataset.abc",),
+            None,
+        ),
     ],
 )
 def test_each_command_resolves_and_analyzes_once(
@@ -252,17 +288,28 @@ def test_each_command_resolves_and_analyzes_once(
         [
             "dependency",
             *arguments,
-            "--profile", "qa",
-            "--branch", "dev",
-            "--change", "rename field",
-            "--direction", "downstream",
-            "--depth", "4",
-            "--max-nodes", "250",
-            "--max-requests", "300",
-            "--max-pages", "120",
-            "--max-items", "12000",
-            "--time-budget-seconds", "90",
-            "--graph-output", str(graph_path),
+            "--profile",
+            "qa",
+            "--branch",
+            "dev",
+            "--change",
+            "rename field",
+            "--direction",
+            "downstream",
+            "--depth",
+            "4",
+            "--max-nodes",
+            "250",
+            "--max-requests",
+            "300",
+            "--max-pages",
+            "120",
+            "--max-items",
+            "12000",
+            "--time-budget-seconds",
+            "90",
+            "--graph-output",
+            str(graph_path),
         ],
     )
     assert result.exit_code == 0, result.output
@@ -293,13 +340,28 @@ def test_each_command_resolves_and_analyzes_once(
 
 @pytest.mark.parametrize(
     ("option", "value"),
-    [("--max-requests", "1001"), ("--max-pages", "501"), ("--max-items", "100001"), ("--max-nodes", "1001"), ("--depth", "11"), ("--time-budget-seconds", "601")],
+    [
+        ("--max-requests", "1001"),
+        ("--max-pages", "501"),
+        ("--max-items", "100001"),
+        ("--max-nodes", "1001"),
+        ("--depth", "11"),
+        ("--time-budget-seconds", "601"),
+    ],
 )
 def test_hard_ceiling_fails_before_service_construction(tmp_path, option, value):
     with patch("pltr.commands.dependency.DependencyGraphService") as constructor:
         result = runner.invoke(
             app,
-            ["dependency", "resource", "ri.foundry.main.dataset.abc", option, value, "--graph-output", str(tmp_path / "graph.json")],
+            [
+                "dependency",
+                "resource",
+                "ri.foundry.main.dataset.abc",
+                option,
+                value,
+                "--graph-output",
+                str(tmp_path / "graph.json"),
+            ],
         )
     assert result.exit_code != 0
     assert "hard ceiling" in result.output
@@ -312,7 +374,18 @@ def test_output_does_not_replace_graph_output_or_repeat_analysis(tmp_path, servi
     graph = tmp_path / "graph.json"
     result = runner.invoke(
         app,
-        ["dependency", "resource", "ri.foundry.main.dataset.abc", "--format", "json", "--full", "--output", str(rendered), "--graph-output", str(graph)],
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--format",
+            "json",
+            "--full",
+            "--output",
+            str(rendered),
+            "--graph-output",
+            str(graph),
+        ],
     )
     assert result.exit_code == 0, result.output
     assert rendered.exists() and graph.exists()
@@ -326,9 +399,7 @@ def test_output_does_not_replace_graph_output_or_repeat_analysis(tmp_path, servi
         if key not in {"agent", "artifact"}
     }
     expected = analysis_result()
-    assert retained == {
-        key: value for key, value in expected.items() if key != "agent"
-    }
+    assert retained == {key: value for key, value in expected.items() if key != "agent"}
     assert {
         key: value
         for key, value in artifact_document["agent"].items()
@@ -512,7 +583,17 @@ def test_csv_has_every_explicit_row_kind(tmp_path, service):
     rendered = tmp_path / "rendered.csv"
     result = runner.invoke(
         app,
-        ["dependency", "resource", "ri.foundry.main.dataset.abc", "--format", "csv", "--output", str(rendered), "--graph-output", str(tmp_path / "graph.json")],
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--format",
+            "csv",
+            "--output",
+            str(rendered),
+            "--graph-output",
+            str(tmp_path / "graph.json"),
+        ],
     )
     assert result.exit_code == 0, result.output
     kinds = {row["row_kind"] for row in csv.DictReader(StringIO(rendered.read_text()))}
@@ -627,7 +708,10 @@ def test_graph_json_and_csv_modes_retain_full_agent_contract(tmp_path, service):
     )
     assert graph_result.exit_code == 0, graph_result.output
     assert "Agent verification: must=0 should=1 unsupported=0" in graph_result.output
-    assert "Agent blast radius: critical=0 structural=0 indirect=1 unknown=0" in graph_result.output
+    assert (
+        "Agent blast radius: critical=0 structural=0 indirect=1 unknown=0"
+        in graph_result.output
+    )
 
     json_result = runner.invoke(
         app,
@@ -749,9 +833,7 @@ def test_ci_comparison_artifact_errors_use_fatal_machine_exit_one(
 @pytest.mark.skipif(
     not hasattr(os, "mkfifo"), reason="mkfifo is unavailable on this platform"
 )
-def test_compare_artifact_rejects_non_regular_file_without_blocking(
-    tmp_path, service
-):
+def test_compare_artifact_rejects_non_regular_file_without_blocking(tmp_path, service):
     constructor, _, _, _ = service
     baseline = tmp_path / "baseline.fifo"
     os.mkfifo(baseline)
@@ -850,7 +932,10 @@ _MALFORMED_BASELINE = _valid_comparison_baseline()
         ({}, "must have an object 'graph'"),
         ({"artifact": {}}, "must have an object 'graph'"),
         (_drop(_MALFORMED_BASELINE, "graph"), "must have an object 'graph'"),
-        (_set(_MALFORMED_BASELINE, "not-an-object", "graph"), "must have an object 'graph'"),
+        (
+            _set(_MALFORMED_BASELINE, "not-an-object", "graph"),
+            "must have an object 'graph'",
+        ),
         (
             _drop(_MALFORMED_BASELINE, "graph", "nodes"),
             "must have an array 'graph.nodes'",
@@ -975,9 +1060,7 @@ def test_compare_artifact_rejects_containers_exceeding_the_hard_ceiling(
     constructor, _, _, _ = service
     monkeypatch.setattr(dependency_command, "MAX_COMPARISON_GRAPH_NODES", 1)
     baseline = tmp_path / "baseline.json"
-    baseline.write_text(
-        json.dumps({"graph": {"nodes": [{"id": "a"}, {"id": "b"}]}})
-    )
+    baseline.write_text(json.dumps({"graph": {"nodes": [{"id": "a"}, {"id": "b"}]}}))
 
     result = runner.invoke(
         app,
@@ -1000,9 +1083,7 @@ def test_compare_artifact_rejects_containers_exceeding_the_hard_ceiling(
     constructor.assert_not_called()
 
 
-def test_compare_artifact_error_raises_bad_parameter_outside_ci_mode(
-    tmp_path, service
-):
+def test_compare_artifact_error_raises_bad_parameter_outside_ci_mode(tmp_path, service):
     constructor, _, _, _ = service
     baseline = tmp_path / "baseline.json"
     baseline.write_text("{not-json")
@@ -1057,10 +1138,18 @@ def test_success_result_and_persisted_artifact_share_artifact_reference(
     assert persisted["agent"]["artifact_reference"] == expected_reference
 
 
-def test_partial_gap_exits_zero_and_table_references_complete_artifact(tmp_path, service):
+def test_partial_gap_exits_zero_and_table_references_complete_artifact(
+    tmp_path, service
+):
     result = runner.invoke(
         app,
-        ["dependency", "resource", "ri.foundry.main.dataset.abc", "--graph-output", str(tmp_path / "graph.json")],
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--graph-output",
+            str(tmp_path / "graph.json"),
+        ],
     )
     assert result.exit_code == 0
     assert "schedule-index-may-be-stale" in result.output
@@ -1075,7 +1164,17 @@ def test_partial_gap_exits_zero_and_table_references_complete_artifact(tmp_path,
 def test_json_preserves_branchless_operation_provenance(tmp_path, service):
     result = runner.invoke(
         app,
-        ["dependency", "resource", "ri.foundry.main.dataset.abc", "--branch", "dev", "--format", "json", "--graph-output", str(tmp_path / "graph.json")],
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--branch",
+            "dev",
+            "--format",
+            "json",
+            "--graph-output",
+            str(tmp_path / "graph.json"),
+        ],
     )
     assert result.exit_code == 0, result.output
     document = json.loads(result.output)
@@ -1086,7 +1185,14 @@ def test_json_preserves_branchless_operation_provenance(tmp_path, service):
 def test_only_six_direct_target_commands_are_advertised():
     result = runner.invoke(app, ["dependency", "--help"])
     assert result.exit_code == 0
-    for command in ("object-type", "property", "link-type", "action-type", "query-type", "resource"):
+    for command in (
+        "object-type",
+        "property",
+        "link-type",
+        "action-type",
+        "query-type",
+        "resource",
+    ):
         assert command in result.output
     for excluded in ("function", "schedule", "workshop-variable"):
         assert f"  {excluded} " not in result.output
@@ -1113,7 +1219,15 @@ def test_fatal_error_is_stable_json_without_artifact(tmp_path, service):
     graph = tmp_path / "graph.json"
     result = runner.invoke(
         app,
-        ["dependency", "resource", "ri.foundry.main.dataset.secret", "--format", "json", "--graph-output", str(graph)],
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.secret",
+            "--format",
+            "json",
+            "--graph-output",
+            str(graph),
+        ],
     )
     assert result.exit_code == 1
     assert json.loads(result.output)["error_class"] == "permission-denied"
@@ -1126,7 +1240,15 @@ def test_unknown_exception_is_structured_without_traceback(tmp_path, service):
     instance.analyze.side_effect = RuntimeError("unexpected")
     result = runner.invoke(
         app,
-        ["dependency", "resource", "ri.foundry.main.dataset.abc", "--format", "json", "--graph-output", str(tmp_path / "graph.json")],
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--format",
+            "json",
+            "--graph-output",
+            str(tmp_path / "graph.json"),
+        ],
     )
     assert result.exit_code == 1
     payload = json.loads(result.output)
@@ -1142,7 +1264,13 @@ def test_artifact_failure_prevents_compact_success_output(tmp_path, service):
     ):
         result = runner.invoke(
             app,
-            ["dependency", "resource", "ri.foundry.main.dataset.abc", "--graph-output", str(tmp_path / "graph.json")],
+            [
+                "dependency",
+                "resource",
+                "ri.foundry.main.dataset.abc",
+                "--graph-output",
+                str(tmp_path / "graph.json"),
+            ],
         )
     assert result.exit_code == 1
     assert "artifact-write-failed" in result.output

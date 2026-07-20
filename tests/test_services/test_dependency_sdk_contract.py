@@ -161,7 +161,9 @@ def test_every_operation_emits_pinned_provenance_from_actual_invocation_path(
     assert provenance.sdk_namespace == spec.namespace
     assert provenance.sdk_method == spec.method
     assert provenance.capability_ids == spec.capability_ids
-    assert provenance.invocation_sdk_version == version("foundry-platform-sdk") == "1.95.0"
+    assert (
+        provenance.invocation_sdk_version == version("foundry-platform-sdk") == "1.95.0"
+    )
     assert provenance.request_timeout_seconds == 29
     assert provenance.invoked_at.endswith("Z")
     assert provenance.observed_at.endswith("Z")
@@ -233,9 +235,7 @@ def _resolver_fixture():
                 QueryType=SimpleNamespace(list=list_queries),
             ),
         ),
-        filesystem=SimpleNamespace(
-            Resource=SimpleNamespace(get=get_resource)
-        ),
+        filesystem=SimpleNamespace(Resource=SimpleNamespace(get=get_resource)),
     )
     return client, {
         "object": get_full_metadata,
@@ -409,9 +409,7 @@ def test_target_resolvers_fail_closed_for_missing_members_and_permissions():
 
     missing_query_context = AnalysisContext.create(profile="prod")
     with pytest.raises(DependencyFatalError) as missing_query:
-        service.resolve_query_type(
-            missing_query_context, "ontology", "MissingQuery"
-        )
+        service.resolve_query_type(missing_query_context, "ontology", "MissingQuery")
     assert missing_query.value.error_class == "not-found"
 
     calls["link"].side_effect = sdk_errors.NotFoundError({})
@@ -426,8 +424,6 @@ def test_target_resolvers_fail_closed_for_missing_members_and_permissions():
     calls["action"].side_effect = sdk_errors.PermissionDeniedError({})
     permission_context = AnalysisContext.create(profile="prod")
     with pytest.raises(DependencyFatalError) as permission:
-        service.resolve_action_type(
-            permission_context, "ontology", "HireEmployee"
-        )
+        service.resolve_action_type(permission_context, "ontology", "HireEmployee")
     assert permission.value.error_class == "permission-denied"
     assert permission.value.operation == "action-type.get-full-metadata"

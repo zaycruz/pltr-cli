@@ -502,7 +502,9 @@ class OrchestrationService(BaseService):
             response = self.service.Schedule.runs(**kwargs)
             return self._format_schedule_runs_response(response)
         except Exception as e:
-            raise RuntimeError(f"Failed to get runs for schedule {schedule_rid}: {e}") from e
+            raise RuntimeError(
+                f"Failed to get runs for schedule {schedule_rid}: {e}"
+            ) from e
 
     # Formatting methods
     def _format_build_info(self, build: Any) -> Dict[str, Any]:

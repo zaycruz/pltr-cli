@@ -90,19 +90,89 @@ class SDKOperationSpec:
 
 
 SDK_OPERATION_SPECS: dict[str, SDKOperationSpec] = {
-    "object-type.get-full-metadata": SDKOperationSpec(("CAP-01", "CAP-16"), True, True, "client.ontologies.Ontology.ObjectType", "get_full_metadata"),
-    "object-type.get-outgoing-link-type": SDKOperationSpec(("CAP-01", "CAP-16"), True, False, "client.ontologies.Ontology.ObjectType", "get_outgoing_link_type"),
-    "action-type.get-full-metadata": SDKOperationSpec(("CAP-02", "CAP-16"), True, True, "client.ontologies.ActionTypeFullMetadata", "get"),
-    "action-type.list-full-metadata": SDKOperationSpec(("CAP-02", "CAP-03", "CAP-13", "CAP-16"), True, True, "client.ontologies.ActionTypeFullMetadata", "list"),
-    "query-type.list": SDKOperationSpec(("CAP-04", "CAP-05", "CAP-13", "CAP-16"), True, False, "client.ontologies.Ontology.QueryType", "list"),
-    "dataset.get-schedules": SDKOperationSpec(("CAP-06", "CAP-13", "CAP-16"), True, False, "client.datasets.Dataset", "get_schedules"),
-    "schedule.get": SDKOperationSpec(("CAP-07", "CAP-16"), False, True, "client.orchestration.Schedule", "get"),
-    "schedule.get-affected-resources": SDKOperationSpec(("CAP-07", "CAP-16"), False, True, "client.orchestration.Schedule", "get_affected_resources"),
-    "schedule.runs": SDKOperationSpec(("CAP-07", "CAP-13", "CAP-16"), False, False, "client.orchestration.Schedule", "runs"),
-    "build.get": SDKOperationSpec(("CAP-08", "CAP-09", "CAP-16"), False, False, "client.orchestration.Build", "get"),
-    "build.jobs": SDKOperationSpec(("CAP-08", "CAP-09", "CAP-13", "CAP-16"), False, False, "client.orchestration.Build", "jobs"),
-    "filesystem.resource.get": SDKOperationSpec(("CAP-10", "CAP-16"), False, False, "client.filesystem.Resource", "get"),
-    "third-party-application.get": SDKOperationSpec(("CAP-10", "CAP-16"), False, True, "client.third_party_applications.ThirdPartyApplication", "get"),
+    "object-type.get-full-metadata": SDKOperationSpec(
+        ("CAP-01", "CAP-16"),
+        True,
+        True,
+        "client.ontologies.Ontology.ObjectType",
+        "get_full_metadata",
+    ),
+    "object-type.get-outgoing-link-type": SDKOperationSpec(
+        ("CAP-01", "CAP-16"),
+        True,
+        False,
+        "client.ontologies.Ontology.ObjectType",
+        "get_outgoing_link_type",
+    ),
+    "action-type.get-full-metadata": SDKOperationSpec(
+        ("CAP-02", "CAP-16"),
+        True,
+        True,
+        "client.ontologies.ActionTypeFullMetadata",
+        "get",
+    ),
+    "action-type.list-full-metadata": SDKOperationSpec(
+        ("CAP-02", "CAP-03", "CAP-13", "CAP-16"),
+        True,
+        True,
+        "client.ontologies.ActionTypeFullMetadata",
+        "list",
+    ),
+    "query-type.list": SDKOperationSpec(
+        ("CAP-04", "CAP-05", "CAP-13", "CAP-16"),
+        True,
+        False,
+        "client.ontologies.Ontology.QueryType",
+        "list",
+    ),
+    "dataset.get-schedules": SDKOperationSpec(
+        ("CAP-06", "CAP-13", "CAP-16"),
+        True,
+        False,
+        "client.datasets.Dataset",
+        "get_schedules",
+    ),
+    "schedule.get": SDKOperationSpec(
+        ("CAP-07", "CAP-16"), False, True, "client.orchestration.Schedule", "get"
+    ),
+    "schedule.get-affected-resources": SDKOperationSpec(
+        ("CAP-07", "CAP-16"),
+        False,
+        True,
+        "client.orchestration.Schedule",
+        "get_affected_resources",
+    ),
+    "schedule.runs": SDKOperationSpec(
+        ("CAP-07", "CAP-13", "CAP-16"),
+        False,
+        False,
+        "client.orchestration.Schedule",
+        "runs",
+    ),
+    "build.get": SDKOperationSpec(
+        ("CAP-08", "CAP-09", "CAP-16"),
+        False,
+        False,
+        "client.orchestration.Build",
+        "get",
+    ),
+    "build.jobs": SDKOperationSpec(
+        ("CAP-08", "CAP-09", "CAP-13", "CAP-16"),
+        False,
+        False,
+        "client.orchestration.Build",
+        "jobs",
+    ),
+    "filesystem.resource.get": SDKOperationSpec(
+        ("CAP-10", "CAP-16"), False, False, "client.filesystem.Resource", "get"
+    ),
+    "third-party-application.get": SDKOperationSpec(
+        ("CAP-10", "CAP-16"),
+        False,
+        True,
+        "client.third_party_applications.ThirdPartyApplication",
+        "get",
+    ),
 }
 
 
@@ -229,7 +299,9 @@ class CoverageRecord:
 
     @property
     def id(self) -> str:
-        return _stable_id("coverage", self.subject_node_id, self.surface, self.read_context_id)
+        return _stable_id(
+            "coverage", self.subject_node_id, self.surface, self.read_context_id
+        )
 
 
 @dataclass(frozen=True)
@@ -268,7 +340,15 @@ class ClassifiedFailure:
 
 
 class DependencyFatalError(RuntimeError):
-    def __init__(self, error_class: str, target: str, operation: str, message: str, retryable: bool, read_context_id: str):
+    def __init__(
+        self,
+        error_class: str,
+        target: str,
+        operation: str,
+        message: str,
+        retryable: bool,
+        read_context_id: str,
+    ):
         super().__init__(message)
         self.error_class = error_class
         self.target = target
@@ -277,7 +357,14 @@ class DependencyFatalError(RuntimeError):
         self.read_context_id = read_context_id
 
     def to_dict(self) -> dict[str, Any]:
-        return {"error_class": self.error_class, "target": self.target, "operation": self.operation, "message": str(self), "retryable": self.retryable, "read_context_id": self.read_context_id}
+        return {
+            "error_class": self.error_class,
+            "target": self.target,
+            "operation": self.operation,
+            "message": str(self),
+            "retryable": self.retryable,
+            "read_context_id": self.read_context_id,
+        }
 
 
 class BudgetExhausted(RuntimeError):
@@ -303,7 +390,14 @@ class DiscoveryBudget:
     used_nodes: int = 0
     _started_at: float = field(default_factory=monotonic, repr=False)
 
-    HARD_CEILINGS = {"max_requests": 1000, "max_pages": 500, "max_items": 100_000, "max_nodes": 1000, "max_depth": 10, "time_budget_seconds": 600}
+    HARD_CEILINGS = {
+        "max_requests": 1000,
+        "max_pages": 500,
+        "max_items": 100_000,
+        "max_nodes": 1000,
+        "max_depth": 10,
+        "time_budget_seconds": 600,
+    }
 
     def __post_init__(self) -> None:
         for name, ceiling in self.HARD_CEILINGS.items():
@@ -370,8 +464,21 @@ class DiscoveryBudget:
 
     def snapshot(self) -> dict[str, Any]:
         return {
-            "used": {"requests": self.used_requests, "pages": self.used_pages, "items": self.used_items, "nodes": self.used_nodes, "elapsed_seconds": round(self.elapsed_seconds, 6)},
-            "limits": {"requests": self.max_requests, "pages": self.max_pages, "items": self.max_items, "nodes": self.max_nodes, "depth": self.max_depth, "time_budget_seconds": self.time_budget_seconds},
+            "used": {
+                "requests": self.used_requests,
+                "pages": self.used_pages,
+                "items": self.used_items,
+                "nodes": self.used_nodes,
+                "elapsed_seconds": round(self.elapsed_seconds, 6),
+            },
+            "limits": {
+                "requests": self.max_requests,
+                "pages": self.max_pages,
+                "items": self.max_items,
+                "nodes": self.max_nodes,
+                "depth": self.max_depth,
+                "time_budget_seconds": self.time_budget_seconds,
+            },
         }
 
 
@@ -390,12 +497,44 @@ class AnalysisContext:
     caches: dict[tuple[Any, ...], Any] = field(default_factory=dict)
 
     @classmethod
-    def create(cls, profile: str = "default", host: str = "", ontology_rid: Optional[str] = None, requested_branch: Optional[str] = None, dataset_branch: Optional[str] = None, budget: Optional[DiscoveryBudget] = None, request_timeout_seconds: float = 30.0) -> "AnalysisContext":
+    def create(
+        cls,
+        profile: str = "default",
+        host: str = "",
+        ontology_rid: Optional[str] = None,
+        requested_branch: Optional[str] = None,
+        dataset_branch: Optional[str] = None,
+        budget: Optional[DiscoveryBudget] = None,
+        request_timeout_seconds: float = 30.0,
+    ) -> "AnalysisContext":
         sdk_version = _sdk_version()
-        host_fingerprint = sha256(host.rstrip("/").lower().encode()).hexdigest()[:16] if host else "unknown"
+        host_fingerprint = (
+            sha256(host.rstrip("/").lower().encode()).hexdigest()[:16]
+            if host
+            else "unknown"
+        )
         observed_at = _utc_now()
-        context_id = _stable_id("readctx", profile, host_fingerprint, ontology_rid, requested_branch, dataset_branch, SDK_PACKAGE, sdk_version)
-        read_context = ReadContext(context_id, profile, host_fingerprint, SDK_PACKAGE, sdk_version, observed_at, ontology_rid, requested_branch, dataset_branch)
+        context_id = _stable_id(
+            "readctx",
+            profile,
+            host_fingerprint,
+            ontology_rid,
+            requested_branch,
+            dataset_branch,
+            SDK_PACKAGE,
+            sdk_version,
+        )
+        read_context = ReadContext(
+            context_id,
+            profile,
+            host_fingerprint,
+            SDK_PACKAGE,
+            sdk_version,
+            observed_at,
+            ontology_rid,
+            requested_branch,
+            dataset_branch,
+        )
         return cls(read_context, budget or DiscoveryBudget(), request_timeout_seconds)
 
 
@@ -418,7 +557,15 @@ RELATION_KINDS: dict[str, tuple[str, str]] = {
 }
 
 
-STATIC_SURFACES = ("ontology-structure-backing", "full-action-metadata", "query-related-function-metadata", "dataset-orchestration", "application-internals", "workshop-internals", "compass-metadata")
+STATIC_SURFACES = (
+    "ontology-structure-backing",
+    "full-action-metadata",
+    "query-related-function-metadata",
+    "dataset-orchestration",
+    "application-internals",
+    "workshop-internals",
+    "compass-metadata",
+)
 
 # --- Agent-native impact model (AU2-AU7) -----------------------------------
 
@@ -518,15 +665,62 @@ RELEASE_RISK_MULTIPLIERS_V1: dict[str, float] = {
 AGENT_SCHEMA_VERSION = "dependency-agent-v1"
 
 MATRIX_GAPS: dict[str, dict[str, str]] = {
-    "object-type": {"dataset-orchestration": "unsupported-dataset-orchestration", "application-internals": "unsupported-application-internals", "workshop-internals": "unsupported-workshop-internals", "compass-metadata": "ontology-compass-mapping-unavailable"},
-    "property": {"dataset-orchestration": "dataset-column-lineage-unavailable", "application-internals": "unsupported-application-internals", "workshop-internals": "unsupported-workshop-internals", "compass-metadata": "ontology-compass-mapping-unavailable"},
-    "link-type": {"dataset-orchestration": "unsupported-dataset-orchestration", "application-internals": "unsupported-application-internals", "workshop-internals": "unsupported-workshop-internals", "compass-metadata": "ontology-compass-mapping-unavailable"},
-    "action-type": {"dataset-orchestration": "unsupported-dataset-orchestration", "application-internals": "unsupported-application-internals", "workshop-internals": "unsupported-workshop-internals", "compass-metadata": "ontology-compass-mapping-unavailable"},
-    "query-type": {"dataset-orchestration": "unsupported-dataset-orchestration", "application-internals": "unsupported-application-internals", "workshop-internals": "unsupported-workshop-internals", "compass-metadata": "ontology-compass-mapping-unavailable"},
-    "dataset": {"ontology-structure-backing": "ontology-backing-mapping-unavailable", "full-action-metadata": "reverse-action-mapping-unavailable", "query-related-function-metadata": "reverse-query-mapping-unavailable", "application-internals": "unsupported-application-internals", "workshop-internals": "unsupported-workshop-internals"},
-    "third-party-application": {surface: "unsupported-application-internals" if surface == "application-internals" else "unsupported-resource-surface" for surface in STATIC_SURFACES if surface != "compass-metadata"},
-    "workshop-resource": {surface: "unsupported-workshop-internals" if surface == "workshop-internals" else "unsupported-resource-surface" for surface in STATIC_SURFACES if surface != "compass-metadata"},
-    "generic-resource": {surface: "unknown-resource-capabilities" for surface in STATIC_SURFACES if surface != "compass-metadata"},
+    "object-type": {
+        "dataset-orchestration": "unsupported-dataset-orchestration",
+        "application-internals": "unsupported-application-internals",
+        "workshop-internals": "unsupported-workshop-internals",
+        "compass-metadata": "ontology-compass-mapping-unavailable",
+    },
+    "property": {
+        "dataset-orchestration": "dataset-column-lineage-unavailable",
+        "application-internals": "unsupported-application-internals",
+        "workshop-internals": "unsupported-workshop-internals",
+        "compass-metadata": "ontology-compass-mapping-unavailable",
+    },
+    "link-type": {
+        "dataset-orchestration": "unsupported-dataset-orchestration",
+        "application-internals": "unsupported-application-internals",
+        "workshop-internals": "unsupported-workshop-internals",
+        "compass-metadata": "ontology-compass-mapping-unavailable",
+    },
+    "action-type": {
+        "dataset-orchestration": "unsupported-dataset-orchestration",
+        "application-internals": "unsupported-application-internals",
+        "workshop-internals": "unsupported-workshop-internals",
+        "compass-metadata": "ontology-compass-mapping-unavailable",
+    },
+    "query-type": {
+        "dataset-orchestration": "unsupported-dataset-orchestration",
+        "application-internals": "unsupported-application-internals",
+        "workshop-internals": "unsupported-workshop-internals",
+        "compass-metadata": "ontology-compass-mapping-unavailable",
+    },
+    "dataset": {
+        "ontology-structure-backing": "ontology-backing-mapping-unavailable",
+        "full-action-metadata": "reverse-action-mapping-unavailable",
+        "query-related-function-metadata": "reverse-query-mapping-unavailable",
+        "application-internals": "unsupported-application-internals",
+        "workshop-internals": "unsupported-workshop-internals",
+    },
+    "third-party-application": {
+        surface: "unsupported-application-internals"
+        if surface == "application-internals"
+        else "unsupported-resource-surface"
+        for surface in STATIC_SURFACES
+        if surface != "compass-metadata"
+    },
+    "workshop-resource": {
+        surface: "unsupported-workshop-internals"
+        if surface == "workshop-internals"
+        else "unsupported-resource-surface"
+        for surface in STATIC_SURFACES
+        if surface != "compass-metadata"
+    },
+    "generic-resource": {
+        surface: "unknown-resource-capabilities"
+        for surface in STATIC_SURFACES
+        if surface != "compass-metadata"
+    },
 }
 
 # Reason codes for gaps that are structurally intentional and static -- every
@@ -552,15 +746,39 @@ def classify_exception(error: BaseException) -> ClassifiedFailure:
         if getattr(candidate, "name", None) == "BranchNotFound":
             return ClassifiedFailure("branch-not-found", "unresolved", False)
         mapping = (
-            ((sdk_errors.UnauthorizedError, sdk_errors.NotAuthenticated), ClassifiedFailure("authentication", "inaccessible", False)),
-            ((sdk_errors.PermissionDeniedError,), ClassifiedFailure("permission-denied", "inaccessible", False)),
-            ((sdk_errors.NotFoundError,), ClassifiedFailure("not-found", "unresolved", False)),
-            ((sdk_errors.ApiNotFoundError,), ClassifiedFailure("unsupported", "unsupported", False)),
-            ((sdk_errors.RateLimitError, sdk_errors.PalantirQoSException), ClassifiedFailure("rate-limited", "partial", True)),
+            (
+                (sdk_errors.UnauthorizedError, sdk_errors.NotAuthenticated),
+                ClassifiedFailure("authentication", "inaccessible", False),
+            ),
+            (
+                (sdk_errors.PermissionDeniedError,),
+                ClassifiedFailure("permission-denied", "inaccessible", False),
+            ),
+            (
+                (sdk_errors.NotFoundError,),
+                ClassifiedFailure("not-found", "unresolved", False),
+            ),
+            (
+                (sdk_errors.ApiNotFoundError,),
+                ClassifiedFailure("unsupported", "unsupported", False),
+            ),
+            (
+                (sdk_errors.RateLimitError, sdk_errors.PalantirQoSException),
+                ClassifiedFailure("rate-limited", "partial", True),
+            ),
             ((sdk_errors.TimeoutError,), ClassifiedFailure("timeout", "partial", True)),
-            ((sdk_errors.ConnectionError, sdk_errors.ProxyError), ClassifiedFailure("connection", "partial", True)),
-            ((sdk_errors.BadRequestError, sdk_errors.UnprocessableEntityError), ClassifiedFailure("invalid-request", "unresolved", False)),
-            ((sdk_errors.InternalServerError,), ClassifiedFailure("internal", "partial", True)),
+            (
+                (sdk_errors.ConnectionError, sdk_errors.ProxyError),
+                ClassifiedFailure("connection", "partial", True),
+            ),
+            (
+                (sdk_errors.BadRequestError, sdk_errors.UnprocessableEntityError),
+                ClassifiedFailure("invalid-request", "unresolved", False),
+            ),
+            (
+                (sdk_errors.InternalServerError,),
+                ClassifiedFailure("internal", "partial", True),
+            ),
         )
         for classes, result in mapping:
             if isinstance(candidate, classes):
@@ -587,7 +805,9 @@ def _is_expected_collection_failure(error: BaseException) -> bool:
 class DependencyGraphService(BaseService):
     """Resolve targets and compose bounded collectors into one canonical graph."""
 
-    def __init__(self, profile: Optional[str] = None, client: Optional[FoundryClient] = None):
+    def __init__(
+        self, profile: Optional[str] = None, client: Optional[FoundryClient] = None
+    ):
         super().__init__(profile)
         if client is not None:
             self._client = client
@@ -595,38 +815,111 @@ class DependencyGraphService(BaseService):
     def _get_service(self) -> FoundryClient:
         return self.client
 
-    def create_context(self, *, host: str = "", ontology_rid: Optional[str] = None, requested_branch: Optional[str] = None, dataset_branch: Optional[str] = None, budget: Optional[DiscoveryBudget] = None, request_timeout_seconds: float = 30.0) -> AnalysisContext:
-        return AnalysisContext.create(self.profile or "default", host, ontology_rid, requested_branch, dataset_branch, budget, request_timeout_seconds)
+    def create_context(
+        self,
+        *,
+        host: str = "",
+        ontology_rid: Optional[str] = None,
+        requested_branch: Optional[str] = None,
+        dataset_branch: Optional[str] = None,
+        budget: Optional[DiscoveryBudget] = None,
+        request_timeout_seconds: float = 30.0,
+    ) -> AnalysisContext:
+        return AnalysisContext.create(
+            self.profile or "default",
+            host,
+            ontology_rid,
+            requested_branch,
+            dataset_branch,
+            budget,
+            request_timeout_seconds,
+        )
 
-    def resolve_object_type(self, context: AnalysisContext, ontology_rid: str, object_type: str) -> DependencyTarget:
-        return self._resolve_ontology_target(context, "object-type", ontology_rid, object_type)
+    def resolve_object_type(
+        self, context: AnalysisContext, ontology_rid: str, object_type: str
+    ) -> DependencyTarget:
+        return self._resolve_ontology_target(
+            context, "object-type", ontology_rid, object_type
+        )
 
-    def resolve_property(self, context: AnalysisContext, ontology_rid: str, object_type: str, property_name: str) -> DependencyTarget:
-        target = self._resolve_ontology_target(context, "property", ontology_rid, object_type, property_name)
+    def resolve_property(
+        self,
+        context: AnalysisContext,
+        ontology_rid: str,
+        object_type: str,
+        property_name: str,
+    ) -> DependencyTarget:
+        target = self._resolve_ontology_target(
+            context, "property", ontology_rid, object_type, property_name
+        )
         return target
 
-    def resolve_link_type(self, context: AnalysisContext, ontology_rid: str, object_type: str, link_type: str) -> DependencyTarget:
-        target = self._resolve_ontology_target(context, "link-type", ontology_rid, object_type, link_type)
+    def resolve_link_type(
+        self,
+        context: AnalysisContext,
+        ontology_rid: str,
+        object_type: str,
+        link_type: str,
+    ) -> DependencyTarget:
+        target = self._resolve_ontology_target(
+            context, "link-type", ontology_rid, object_type, link_type
+        )
         return target
 
-    def resolve_action_type(self, context: AnalysisContext, ontology_rid: str, action_type: str) -> DependencyTarget:
+    def resolve_action_type(
+        self, context: AnalysisContext, ontology_rid: str, action_type: str
+    ) -> DependencyTarget:
         kwargs = {"ontology": ontology_rid, "action_type": action_type, "preview": True}
         if context.read_context.requested_branch is not None:
             kwargs["branch"] = context.read_context.requested_branch
-        metadata, operation_id = self._invoke_sdk(context, "action-type.get-full-metadata", self.client.ontologies.ActionTypeFullMetadata.get, kwargs, target=action_type, fatal=True)
-        node = self._add_node(context, "action-type", action_type, {"ontology_rid": ontology_rid, "action_type": action_type}, True)
-        context.caches[("action-metadata", ontology_rid, context.read_context.requested_branch, action_type)] = (metadata, operation_id)
-        return DependencyTarget("action-type", node.identifiers, node.display_name, node.id)
+        metadata, operation_id = self._invoke_sdk(
+            context,
+            "action-type.get-full-metadata",
+            self.client.ontologies.ActionTypeFullMetadata.get,
+            kwargs,
+            target=action_type,
+            fatal=True,
+        )
+        node = self._add_node(
+            context,
+            "action-type",
+            action_type,
+            {"ontology_rid": ontology_rid, "action_type": action_type},
+            True,
+        )
+        context.caches[
+            (
+                "action-metadata",
+                ontology_rid,
+                context.read_context.requested_branch,
+                action_type,
+            )
+        ] = (metadata, operation_id)
+        return DependencyTarget(
+            "action-type", node.identifiers, node.display_name, node.id
+        )
 
-    def resolve_query_type(self, context: AnalysisContext, ontology_rid: str, query_type: str) -> DependencyTarget:
+    def resolve_query_type(
+        self, context: AnalysisContext, ontology_rid: str, query_type: str
+    ) -> DependencyTarget:
         try:
             index = self._get_query_index(context, ontology_rid)
         except Exception as error:
             if not _is_expected_collection_failure(error):
                 raise
             classified = classify_exception(error)
-            raise DependencyFatalError(classified.error_class, query_type, "query-type.list", str(error), classified.retryable, context.read_context.id) from error
-        if query_type not in index["by_name"] and index.get("incomplete_error") is not None:
+            raise DependencyFatalError(
+                classified.error_class,
+                query_type,
+                "query-type.list",
+                str(error),
+                classified.retryable,
+                context.read_context.id,
+            ) from error
+        if (
+            query_type not in index["by_name"]
+            and index.get("incomplete_error") is not None
+        ):
             incomplete_error = index["incomplete_error"]
             classified = classify_exception(incomplete_error)
             raise DependencyFatalError(
@@ -638,32 +931,92 @@ class DependencyGraphService(BaseService):
                 context.read_context.id,
             ) from incomplete_error
         if query_type not in index["by_name"]:
-            raise DependencyFatalError("not-found", query_type, "query-type.list", f"Query type {query_type} was not found", False, context.read_context.id)
+            raise DependencyFatalError(
+                "not-found",
+                query_type,
+                "query-type.list",
+                f"Query type {query_type} was not found",
+                False,
+                context.read_context.id,
+            )
         query, operation_id = index["by_name"][query_type]
-        node = self._add_node(context, "query-type", query_type, {"ontology_rid": ontology_rid, "query_type": query_type}, True)
-        context.caches[("query-metadata", ontology_rid, context.read_context.requested_branch, query_type)] = (query, operation_id)
-        return DependencyTarget("query-type", node.identifiers, node.display_name, node.id)
+        node = self._add_node(
+            context,
+            "query-type",
+            query_type,
+            {"ontology_rid": ontology_rid, "query_type": query_type},
+            True,
+        )
+        context.caches[
+            (
+                "query-metadata",
+                ontology_rid,
+                context.read_context.requested_branch,
+                query_type,
+            )
+        ] = (query, operation_id)
+        return DependencyTarget(
+            "query-type", node.identifiers, node.display_name, node.id
+        )
 
-    def resolve_resource(self, context: AnalysisContext, resource_rid: str) -> DependencyTarget:
+    def resolve_resource(
+        self, context: AnalysisContext, resource_rid: str
+    ) -> DependencyTarget:
         if not resource_rid.startswith("ri."):
-            raise DependencyFatalError("unsupported-addressability", resource_rid, "filesystem.resource.get", "resource targets must be resolvable Foundry RIDs", False, context.read_context.id)
-        resource, operation_id = self._invoke_sdk(context, "filesystem.resource.get", self.client.filesystem.Resource.get, {"resource_rid": resource_rid}, target=resource_rid, fatal=True)
+            raise DependencyFatalError(
+                "unsupported-addressability",
+                resource_rid,
+                "filesystem.resource.get",
+                "resource targets must be resolvable Foundry RIDs",
+                False,
+                context.read_context.id,
+            )
+        resource, operation_id = self._invoke_sdk(
+            context,
+            "filesystem.resource.get",
+            self.client.filesystem.Resource.get,
+            {"resource_rid": resource_rid},
+            target=resource_rid,
+            fatal=True,
+        )
         data = self._model_dict(resource)
         resource_type = self._resource_type(data)
         kind = self._resource_kind(resource_type)
         display_name = str(data.get("name") or data.get("display_name") or resource_rid)
-        node = self._add_node(context, kind, display_name, {"resource_rid": resource_rid, "resource_type": resource_type or "unknown"}, True)
+        node = self._add_node(
+            context,
+            kind,
+            display_name,
+            {"resource_rid": resource_rid, "resource_type": resource_type or "unknown"},
+            True,
+        )
         self._add_evidence(context, operation_id, "resource", "resource", resource)
         context.caches[("resource", resource_rid)] = data
         return DependencyTarget(kind, node.identifiers, node.display_name, node.id)
 
-    def analyze(self, target: DependencyTarget | Mapping[str, Any], context: AnalysisContext, direction: str = "both", change: Optional[str] = None, change_type: Optional[str] = None, compare_artifact: Optional[Mapping[str, Any]] = None) -> dict[str, Any]:
+    def analyze(
+        self,
+        target: DependencyTarget | Mapping[str, Any],
+        context: AnalysisContext,
+        direction: str = "both",
+        change: Optional[str] = None,
+        change_type: Optional[str] = None,
+        compare_artifact: Optional[Mapping[str, Any]] = None,
+    ) -> dict[str, Any]:
         if direction not in {"both", "upstream", "downstream", "adjacent"}:
-            raise ValueError("direction must be both, upstream, downstream, or adjacent")
+            raise ValueError(
+                "direction must be both, upstream, downstream, or adjacent"
+            )
         target = self._coerce_target(target)
         context.caches[("requested-direction",)] = direction
         if target.node_id is None:
-            node = self._add_node(context, target.kind, target.display_name or self._target_label(target), target.identifiers, True)
+            node = self._add_node(
+                context,
+                target.kind,
+                target.display_name or self._target_label(target),
+                target.identifiers,
+                True,
+            )
             target = replace(target, node_id=node.id)
         self._initialize_matrix(context, target)
         self._discover_bfs(target, context, direction)
@@ -671,25 +1024,52 @@ class DependencyGraphService(BaseService):
         assert target.node_id is not None
         paths = self._derive_paths(context, target.node_id, direction)
         ranked = self._rank_paths(context, paths, change)
-        resolved_change_type, change_type_source = self._resolve_change_type(change, change_type)
+        resolved_change_type, change_type_source = self._resolve_change_type(
+            change, change_type
+        )
         impacts = self._dedupe_ranked_impacts(context, ranked, resolved_change_type)
         classification = self._classify_agent_results(context, impacts)
         result: dict[str, Any] = {
             "target": asdict(target),
             "read_contexts": [self._serialize(context.read_context)],
-            "operation_provenance": [self._serialize(value) for _, value in sorted(context.operation_provenance.items())],
-            "evidence": [self._serialize(value) for _, value in sorted(context.evidence.items())],
-            "graph": {"nodes": [self._serialize(value) for _, value in sorted(context.nodes.items())], "edges": [self._serialize(value) for _, value in sorted(context.edges.items())]},
+            "operation_provenance": [
+                self._serialize(value)
+                for _, value in sorted(context.operation_provenance.items())
+            ],
+            "evidence": [
+                self._serialize(value) for _, value in sorted(context.evidence.items())
+            ],
+            "graph": {
+                "nodes": [
+                    self._serialize(value) for _, value in sorted(context.nodes.items())
+                ],
+                "edges": [
+                    self._serialize(value) for _, value in sorted(context.edges.items())
+                ],
+            },
             "paths": paths,
             "ranked_relationships": ranked,
-            "coverage": [self._serialize(value) for _, value in sorted(context.coverage_records.items())],
-            "gaps": [dict(self._serialize(value), id=value.id) for _, value in sorted(context.gaps.items())],
+            "coverage": [
+                self._serialize(value)
+                for _, value in sorted(context.coverage_records.items())
+            ],
+            "gaps": [
+                dict(self._serialize(value), id=value.id)
+                for _, value in sorted(context.gaps.items())
+            ],
             "errors": sorted(context.errors, key=lambda value: str(value)),
             "budget": context.budget.snapshot(),
-            "summary": {"node_count": len(context.nodes), "edge_count": len(context.edges), "path_count": len(paths), "gap_count": len(context.gaps)},
+            "summary": {
+                "node_count": len(context.nodes),
+                "edge_count": len(context.edges),
+                "path_count": len(paths),
+                "gap_count": len(context.gaps),
+            },
         }
         if change is not None:
-            result["change_assessment"] = self._assess_change(change, ranked, context, classification)
+            result["change_assessment"] = self._assess_change(
+                change, ranked, context, classification
+            )
         result["agent"] = self._build_agent_block(
             context,
             target,
@@ -702,9 +1082,13 @@ class DependencyGraphService(BaseService):
         )
         return result
 
-    def _discover_bfs(self, target: DependencyTarget, context: AnalysisContext, direction: str) -> None:
+    def _discover_bfs(
+        self, target: DependencyTarget, context: AnalysisContext, direction: str
+    ) -> None:
         assert target.node_id is not None
-        queue: deque[tuple[DependencyTarget, int, tuple[str, ...]]] = deque([(target, 0, ())])
+        queue: deque[tuple[DependencyTarget, int, tuple[str, ...]]] = deque(
+            [(target, 0, ())]
+        )
         visited: set[str] = set()
         while queue:
             current, depth, directions = queue.popleft()
@@ -740,7 +1124,9 @@ class DependencyGraphService(BaseService):
                         )
                 break
             except Exception as error:
-                record = self._coverage_record(context, current.kind, "frontier-collection", current.node_id)
+                record = self._coverage_record(
+                    context, current.kind, "frontier-collection", current.node_id
+                )
                 self._record_failure(context, record, error, "frontier-collection")
             visited.add(current.node_id)
             if depth >= context.budget.max_depth:
@@ -748,24 +1134,49 @@ class DependencyGraphService(BaseService):
                 for edge in sorted(context.edges.values(), key=lambda value: value.id):
                     if current.node_id not in {edge.source, edge.target}:
                         continue
-                    neighbor_id = edge.target if current.node_id == edge.source else edge.source
+                    neighbor_id = (
+                        edge.target if current.node_id == edge.source else edge.source
+                    )
                     if neighbor_id in visited:
                         continue
                     neighbor = context.nodes[neighbor_id]
-                    if neighbor.kind in {"object-type", "property", "link-type", "action-type", "query-type", "dataset", "third-party-application", "workshop-resource", "generic-resource"}:
-                        undispatched.append(DependencyTarget(neighbor.kind, neighbor.identifiers, neighbor.display_name, neighbor.id))
+                    if neighbor.kind in {
+                        "object-type",
+                        "property",
+                        "link-type",
+                        "action-type",
+                        "query-type",
+                        "dataset",
+                        "third-party-application",
+                        "workshop-resource",
+                        "generic-resource",
+                    }:
+                        undispatched.append(
+                            DependencyTarget(
+                                neighbor.kind,
+                                neighbor.identifiers,
+                                neighbor.display_name,
+                                neighbor.id,
+                            )
+                        )
                 if undispatched:
                     budget_error = BudgetExhausted("depth", context.budget.snapshot())
                     context.caches[("budget-exhausted",)] = budget_error
-                    self._budget_gap(context, current.node_id, "graph-discovery", budget_error)
+                    self._budget_gap(
+                        context, current.node_id, "graph-discovery", budget_error
+                    )
                     for frontier_target in undispatched:
-                        self._terminalize_frontier_budget(context, frontier_target, budget_error)
+                        self._terminalize_frontier_budget(
+                            context, frontier_target, budget_error
+                        )
                 continue
             candidates: list[tuple[str, DependencyTarget, tuple[str, ...]]] = []
             for edge in sorted(context.edges.values(), key=lambda value: value.id):
                 if current.node_id not in {edge.source, edge.target}:
                     continue
-                neighbor_id = edge.target if current.node_id == edge.source else edge.source
+                neighbor_id = (
+                    edge.target if current.node_id == edge.source else edge.source
+                )
                 if neighbor_id in visited:
                     continue
                 step_direction = self._traversal_direction(edge, current.node_id)
@@ -776,52 +1187,137 @@ class DependencyGraphService(BaseService):
                     if opposite in causal_directions:
                         continue
                 neighbor = context.nodes[neighbor_id]
-                if neighbor.kind in {"object-type", "property", "link-type", "action-type", "query-type", "dataset", "third-party-application", "workshop-resource", "generic-resource"}:
-                    candidates.append((neighbor.id, DependencyTarget(neighbor.kind, neighbor.identifiers, neighbor.display_name, neighbor.id), next_directions))
-            for _, next_target, next_directions in sorted(candidates, key=lambda value: value[0]):
+                if neighbor.kind in {
+                    "object-type",
+                    "property",
+                    "link-type",
+                    "action-type",
+                    "query-type",
+                    "dataset",
+                    "third-party-application",
+                    "workshop-resource",
+                    "generic-resource",
+                }:
+                    candidates.append(
+                        (
+                            neighbor.id,
+                            DependencyTarget(
+                                neighbor.kind,
+                                neighbor.identifiers,
+                                neighbor.display_name,
+                                neighbor.id,
+                            ),
+                            next_directions,
+                        )
+                    )
+            for _, next_target, next_directions in sorted(
+                candidates, key=lambda value: value[0]
+            ):
                 queue.append((next_target, depth + 1, next_directions))
 
-    def _prepare_frontier_target(self, target: DependencyTarget, context: AnalysisContext) -> None:
+    def _prepare_frontier_target(
+        self, target: DependencyTarget, context: AnalysisContext
+    ) -> None:
         if target.kind == "action-type":
-            key = ("action-metadata", target.identifiers["ontology_rid"], context.read_context.requested_branch, target.identifiers["action_type"])
+            key = (
+                "action-metadata",
+                target.identifiers["ontology_rid"],
+                context.read_context.requested_branch,
+                target.identifiers["action_type"],
+            )
             if key not in context.caches:
-                index = self._get_action_index(context, target.identifiers["ontology_rid"])
+                index = self._get_action_index(
+                    context, target.identifiers["ontology_rid"]
+                )
                 if target.identifiers["action_type"] not in index["by_name"]:
                     if index.get("incomplete_error") is not None:
                         raise index["incomplete_error"]
                     raise KeyError(target.identifiers["action_type"])
-                context.caches[key] = index["by_name"][target.identifiers["action_type"]]
+                context.caches[key] = index["by_name"][
+                    target.identifiers["action_type"]
+                ]
         elif target.kind == "query-type":
-            key = ("query-metadata", target.identifiers["ontology_rid"], context.read_context.requested_branch, target.identifiers["query_type"])
+            key = (
+                "query-metadata",
+                target.identifiers["ontology_rid"],
+                context.read_context.requested_branch,
+                target.identifiers["query_type"],
+            )
             if key not in context.caches:
-                index = self._get_query_index(context, target.identifiers["ontology_rid"])
+                index = self._get_query_index(
+                    context, target.identifiers["ontology_rid"]
+                )
                 if target.identifiers["query_type"] not in index["by_name"]:
                     if index.get("incomplete_error") is not None:
                         raise index["incomplete_error"]
                     raise KeyError(target.identifiers["query_type"])
                 context.caches[key] = index["by_name"][target.identifiers["query_type"]]
         elif target.kind in {"object-type", "property", "link-type"}:
-            object_key = ("object-metadata", target.identifiers["ontology_rid"], target.identifiers["object_type"])
+            object_key = (
+                "object-metadata",
+                target.identifiers["ontology_rid"],
+                target.identifiers["object_type"],
+            )
             if object_key not in context.caches:
-                kwargs: dict[str, Any] = {"ontology": target.identifiers["ontology_rid"], "object_type": target.identifiers["object_type"], "preview": True}
+                kwargs: dict[str, Any] = {
+                    "ontology": target.identifiers["ontology_rid"],
+                    "object_type": target.identifiers["object_type"],
+                    "preview": True,
+                }
                 if context.read_context.requested_branch is not None:
                     kwargs["branch"] = context.read_context.requested_branch
-                context.caches[object_key] = self._invoke_sdk(context, "object-type.get-full-metadata", self.client.ontologies.Ontology.ObjectType.get_full_metadata, kwargs, target=target.identifiers["object_type"])
+                context.caches[object_key] = self._invoke_sdk(
+                    context,
+                    "object-type.get-full-metadata",
+                    self.client.ontologies.Ontology.ObjectType.get_full_metadata,
+                    kwargs,
+                    target=target.identifiers["object_type"],
+                )
             if target.kind == "link-type":
-                link_key = ("link-metadata", target.identifiers["ontology_rid"], target.identifiers["object_type"], target.identifiers["link_type"])
+                link_key = (
+                    "link-metadata",
+                    target.identifiers["ontology_rid"],
+                    target.identifiers["object_type"],
+                    target.identifiers["link_type"],
+                )
                 if link_key not in context.caches:
-                    link_kwargs: dict[str, Any] = {"ontology": target.identifiers["ontology_rid"], "object_type": target.identifiers["object_type"], "link_type": target.identifiers["link_type"]}
+                    link_kwargs: dict[str, Any] = {
+                        "ontology": target.identifiers["ontology_rid"],
+                        "object_type": target.identifiers["object_type"],
+                        "link_type": target.identifiers["link_type"],
+                    }
                     if context.read_context.requested_branch is not None:
                         link_kwargs["branch"] = context.read_context.requested_branch
-                    context.caches[link_key] = self._invoke_sdk(context, "object-type.get-outgoing-link-type", self.client.ontologies.Ontology.ObjectType.get_outgoing_link_type, link_kwargs, target=target.identifiers["link_type"])
+                    context.caches[link_key] = self._invoke_sdk(
+                        context,
+                        "object-type.get-outgoing-link-type",
+                        self.client.ontologies.Ontology.ObjectType.get_outgoing_link_type,
+                        link_kwargs,
+                        target=target.identifiers["link_type"],
+                    )
 
-    def _terminalize_frontier_budget(self, context: AnalysisContext, target: DependencyTarget, error: BudgetExhausted) -> None:
+    def _terminalize_frontier_budget(
+        self, context: AnalysisContext, target: DependencyTarget, error: BudgetExhausted
+    ) -> None:
         self._initialize_matrix(context, target)
-        for record in sorted(context.coverage_records.values(), key=lambda value: value.id):
+        for record in sorted(
+            context.coverage_records.values(), key=lambda value: value.id
+        ):
             if record.subject_node_id != target.node_id or record.complete:
                 continue
-            self._finish_coverage(record, "budget-exhausted", reason="budget-exhausted", attempted=False)
-            self._add_gap(context, target.node_id or "", record.surface, "budget-exhausted", "budget-exhausted", str(error), retryable=True, budget_snapshot=error.snapshot)
+            self._finish_coverage(
+                record, "budget-exhausted", reason="budget-exhausted", attempted=False
+            )
+            self._add_gap(
+                context,
+                target.node_id or "",
+                record.surface,
+                "budget-exhausted",
+                "budget-exhausted",
+                str(error),
+                retryable=True,
+                budget_snapshot=error.snapshot,
+            )
 
     def _invoke_sdk(
         self,
@@ -987,7 +1483,9 @@ class DependencyGraphService(BaseService):
         return DependencyTarget(kind, node.identifiers, node.display_name, node.id)
 
     @staticmethod
-    def _coerce_target(target: DependencyTarget | Mapping[str, Any]) -> DependencyTarget:
+    def _coerce_target(
+        target: DependencyTarget | Mapping[str, Any],
+    ) -> DependencyTarget:
         if isinstance(target, DependencyTarget):
             return target
         identifiers = target.get("identifiers", {})
@@ -1010,11 +1508,15 @@ class DependencyGraphService(BaseService):
         identifiers: Mapping[str, str],
         is_target: bool = False,
     ) -> Node:
-        normalized = {str(key): str(value) for key, value in sorted(identifiers.items())}
+        normalized = {
+            str(key): str(value) for key, value in sorted(identifiers.items())
+        }
         identity = normalized
         if "resource_rid" in normalized:
             identity = {"resource_rid": normalized["resource_rid"]}
-        node_id = _stable_id("node", kind, *[f"{key}={value}" for key, value in identity.items()])
+        node_id = _stable_id(
+            "node", kind, *[f"{key}={value}" for key, value in identity.items()]
+        )
         existing = context.nodes.get(node_id)
         if existing is not None:
             if is_target and not existing.is_target:
@@ -1180,7 +1682,9 @@ class DependencyGraphService(BaseService):
         surfaces: tuple[str, ...] = STATIC_SURFACES
         if target.kind == "dataset":
             surfaces = tuple(
-                surface for surface in STATIC_SURFACES if surface != "dataset-orchestration"
+                surface
+                for surface in STATIC_SURFACES
+                if surface != "dataset-orchestration"
             )
             self._coverage_record(
                 context, target.kind, "schedule-reverse-index", target.node_id
@@ -1228,8 +1732,14 @@ class DependencyGraphService(BaseService):
                     )
                 continue
             status = "budget-exhausted" if budget_error is not None else "unresolved"
-            reason = "budget-exhausted" if budget_error is not None else "collector-did-not-report"
-            self._finish_coverage(record, status, reason=reason, attempted=record.attempted)
+            reason = (
+                "budget-exhausted"
+                if budget_error is not None
+                else "collector-did-not-report"
+            )
+            self._finish_coverage(
+                record, status, reason=reason, attempted=record.attempted
+            )
             if reason != "collector-did-not-report":
                 self._remove_gaps(
                     context,
@@ -1243,9 +1753,13 @@ class DependencyGraphService(BaseService):
                 record.surface,
                 status,
                 reason,
-                str(budget_error) if budget_error is not None else f"The applicable {record.surface} collector did not report a terminal outcome",
+                str(budget_error)
+                if budget_error is not None
+                else f"The applicable {record.surface} collector did not report a terminal outcome",
                 retryable=budget_error is not None,
-                budget_snapshot=budget_error.snapshot if isinstance(budget_error, BudgetExhausted) else None,
+                budget_snapshot=budget_error.snapshot
+                if isinstance(budget_error, BudgetExhausted)
+                else None,
             )
 
     @staticmethod
@@ -1282,11 +1796,14 @@ class DependencyGraphService(BaseService):
         error: BudgetExhausted,
     ) -> None:
         record = self._coverage_record(
-            context, context.nodes.get(node_id, Node(node_id, "transit", node_id, {}, context.read_context.id)).kind, surface, node_id
+            context,
+            context.nodes.get(
+                node_id, Node(node_id, "transit", node_id, {}, context.read_context.id)
+            ).kind,
+            surface,
+            node_id,
         )
-        self._finish_coverage(
-            record, "budget-exhausted", reason="budget-exhausted"
-        )
+        self._finish_coverage(record, "budget-exhausted", reason="budget-exhausted")
         self._add_gap(
             context,
             node_id,
@@ -1798,9 +2315,7 @@ class DependencyGraphService(BaseService):
                         )
                         for index, local_link in enumerate(local_links):
                             context.budget.charge("items")
-                            link_locator = (
-                                f"{locator}.links.{interface_link}[{index}]"
-                            )
+                            link_locator = f"{locator}.links.{interface_link}[{index}]"
                             link_evidence = self._add_evidence(
                                 context,
                                 operation_id,
@@ -1918,7 +2433,9 @@ class DependencyGraphService(BaseService):
             )
 
         if discriminator == "localPropertyImplementation":
-            emit_property(field("property_api_name"), f"{locator}.propertyApiName", implementation)
+            emit_property(
+                field("property_api_name"), f"{locator}.propertyApiName", implementation
+            )
         elif discriminator == "structFieldImplementation":
             struct_field = field("struct_field_of_property")
             property_name = (
@@ -1976,7 +2493,9 @@ class DependencyGraphService(BaseService):
                     local_field = (
                         local_implementation.get("struct_field_api_name")
                         if isinstance(local_implementation, Mapping)
-                        else getattr(local_implementation, "struct_field_api_name", None)
+                        else getattr(
+                            local_implementation, "struct_field_api_name", None
+                        )
                     )
                     field_locator = f"{locator}.mapping.{interface_field}"
                     if local_type not in {"property", "structFieldOfProperty"}:
@@ -2278,7 +2797,9 @@ class DependencyGraphService(BaseService):
                         if root_name == "output"
                         else (target.node_id, query_node.id)
                     )
-                    self._add_edge(context, source, edge_target, relation, [evidence.id])
+                    self._add_edge(
+                        context, source, edge_target, relation, [evidence.id]
+                    )
         if index.get("incomplete_error") is not None:
             self._record_failure(
                 context,
@@ -2337,7 +2858,9 @@ class DependencyGraphService(BaseService):
                 evidence_ids=partial_evidence,
             )
             return
-        global_owners = sorted({name for kind, name, _, _ in references if kind == "object-type"})
+        global_owners = sorted(
+            {name for kind, name, _, _ in references if kind == "object-type"}
+        )
         for kind, name, locator, evidence_id in references:
             evidence_ids.append(evidence_id)
             identifiers = {"ontology_rid": ontology_rid, kind.replace("-", "_"): name}
@@ -2346,18 +2869,34 @@ class DependencyGraphService(BaseService):
             related_kind = kind
             if kind in {"property", "link-type"}:
                 prefix = locator.split(".", 1)[0]
-                local_owners = sorted({owner for owner_kind, owner, owner_locator, _ in references if owner_kind == "object-type" and owner_locator.split(".", 1)[0] == prefix})
+                local_owners = sorted(
+                    {
+                        owner
+                        for owner_kind, owner, owner_locator, _ in references
+                        if owner_kind == "object-type"
+                        and owner_locator.split(".", 1)[0] == prefix
+                    }
+                )
                 owners = local_owners or global_owners
                 if len(owners) == 1:
                     identifiers["object_type"] = owners[0]
                 else:
                     related_kind = f"unresolved-{kind}-reference"
-                    self._add_gap(context, target.node_id, "full-action-metadata", "unresolved", f"ambiguous-{kind}-owner", f"Cannot derive one concrete owning object type for {kind} {name} at {locator}")
+                    self._add_gap(
+                        context,
+                        target.node_id,
+                        "full-action-metadata",
+                        "unresolved",
+                        f"ambiguous-{kind}-owner",
+                        f"Cannot derive one concrete owning object type for {kind} {name} at {locator}",
+                    )
             related = self._add_node(context, related_kind, name, identifiers)
-            relation = "action-uses-function" if kind == "function" else "action-affects-object"
-            self._add_edge(
-                context, target.node_id, related.id, relation, [evidence_id]
+            relation = (
+                "action-uses-function"
+                if kind == "function"
+                else "action-affects-object"
             )
+            self._add_edge(context, target.node_id, related.id, relation, [evidence_id])
         for surface, record in (
             ("ontology-structure-backing", structure_record),
             ("full-action-metadata", action_record),
@@ -2365,7 +2904,9 @@ class DependencyGraphService(BaseService):
             has_gaps = self._has_reported_gap(context, target.node_id, surface)
             self._finish_coverage(
                 record,
-                "partial" if has_gaps else ("covered" if evidence_ids else "covered-empty"),
+                "partial"
+                if has_gaps
+                else ("covered" if evidence_ids else "covered-empty"),
                 evidence_ids=evidence_ids,
                 reason="action-metadata-shape-gap" if has_gaps else None,
             )
@@ -2409,9 +2950,7 @@ class DependencyGraphService(BaseService):
         def emit(kind: str, name: Any, locator: str, raw: Any) -> None:
             if name is None or str(name) == "":
                 return
-            evidence = self._add_evidence(
-                context, operation_id, locator, locator, raw
-            )
+            evidence = self._add_evidence(context, operation_id, locator, locator, raw)
             references.append((kind, str(name), locator, evidence.id))
 
         work: list[tuple[Any, str, int]] = [
@@ -2422,7 +2961,9 @@ class DependencyGraphService(BaseService):
         # intentionally neither traversed nor position-correlated.
         for index, rule in enumerate(getattr(metadata, "full_logic_rules", []) or []):
             discriminator = (
-                rule.get("type") if isinstance(rule, Mapping) else getattr(rule, "type", None)
+                rule.get("type")
+                if isinstance(rule, Mapping)
+                else getattr(rule, "type", None)
             )
             if discriminator not in ACTION_LOGIC_RULE_TYPES:
                 self._add_gap(
@@ -2456,7 +2997,9 @@ class DependencyGraphService(BaseService):
                     children = sorted(value.items(), key=lambda pair: str(pair[0]))
                     for key, item in reversed(children):
                         path = f"{locator}.{key}"
-                        if locator.endswith(("propertyArguments", "sharedPropertyArguments")):
+                        if locator.endswith(
+                            ("propertyArguments", "sharedPropertyArguments")
+                        ):
                             emit("property", key, path, item)
                         work.append((item, path, depth + 1))
                     continue
@@ -2468,7 +3011,12 @@ class DependencyGraphService(BaseService):
                 discriminator = getattr(value, "type", None)
                 for name, item in reversed(fields):
                     path = f"{locator}.{self._field_alias(value, name)}"
-                    if name in {"object_type_api_name", "object_api_name", "a_side_object_type_api_name", "b_side_object_type_api_name"}:
+                    if name in {
+                        "object_type_api_name",
+                        "object_api_name",
+                        "a_side_object_type_api_name",
+                        "b_side_object_type_api_name",
+                    }:
                         emit("object-type", item, path, value)
                     elif name == "interface_type_api_name":
                         emit("interface-type", item, path, value)
@@ -2482,38 +3030,87 @@ class DependencyGraphService(BaseService):
                         emit("shared-property-type", item, path, value)
                     elif name == "object_type_api_names" and isinstance(item, Sequence):
                         for item_index, object_name in enumerate(item):
-                            emit("object-type", object_name, f"{path}[{item_index}]", value)
+                            emit(
+                                "object-type",
+                                object_name,
+                                f"{path}[{item_index}]",
+                                value,
+                            )
                     elif name == "link_types" and isinstance(item, Sequence):
                         for item_index in range(len(item) - 1, -1, -1):
                             link_name = item[item_index]
                             if isinstance(link_name, str):
-                                emit("link-type", link_name, f"{path}[{item_index}]", value)
+                                emit(
+                                    "link-type",
+                                    link_name,
+                                    f"{path}[{item_index}]",
+                                    value,
+                                )
                             else:
-                                work.append((link_name, f"{path}[{item_index}]", depth + 1))
+                                work.append(
+                                    (link_name, f"{path}[{item_index}]", depth + 1)
+                                )
                     elif name == "object_type" and isinstance(item, str):
                         if type(value).__name__ == "CreateInterfaceLogicRule":
                             parameter = parameters.get(item)
                             if parameter is None:
-                                self._add_gap(context, self._action_node_id(metadata, ontology_rid), "full-action-metadata", "unresolved", "unresolved-action-parameter", f"Rule references missing parameter {item} at {path}", locator=path)
+                                self._add_gap(
+                                    context,
+                                    self._action_node_id(metadata, ontology_rid),
+                                    "full-action-metadata",
+                                    "unresolved",
+                                    "unresolved-action-parameter",
+                                    f"Rule references missing parameter {item} at {path}",
+                                    locator=path,
+                                )
                             else:
-                                work.append((parameter.data_type, f"{path}->parameters.{item}.dataType", depth + 1))
+                                work.append(
+                                    (
+                                        parameter.data_type,
+                                        f"{path}->parameters.{item}.dataType",
+                                        depth + 1,
+                                    )
+                                )
                         else:
                             emit("object-type", item, path, value)
                     elif name in parameter_fields and isinstance(item, str):
                         parameter = parameters.get(item)
                         if parameter is None:
-                            self._add_gap(context, self._action_node_id(metadata, ontology_rid), "full-action-metadata", "unresolved", "unresolved-action-parameter", f"Rule references missing parameter {item} at {path}", locator=path)
+                            self._add_gap(
+                                context,
+                                self._action_node_id(metadata, ontology_rid),
+                                "full-action-metadata",
+                                "unresolved",
+                                "unresolved-action-parameter",
+                                f"Rule references missing parameter {item} at {path}",
+                                locator=path,
+                            )
                         else:
-                            work.append((parameter.data_type, f"{path}->parameters.{item}.dataType", depth + 1))
+                            work.append(
+                                (
+                                    parameter.data_type,
+                                    f"{path}->parameters.{item}.dataType",
+                                    depth + 1,
+                                )
+                            )
                     elif name != "type":
                         work.append((item, path, depth + 1))
-                if discriminator == "objectType" and not any(name in {"object_type_api_name", "object_api_name"} for name, _ in fields):
-                    self._add_gap(context, self._action_node_id(metadata, ontology_rid), "full-action-metadata", "unresolved", "unresolved-action-parameter-type", f"Generic objectType parameter at {locator} does not identify a concrete type", locator=locator)
+                if discriminator == "objectType" and not any(
+                    name in {"object_type_api_name", "object_api_name"}
+                    for name, _ in fields
+                ):
+                    self._add_gap(
+                        context,
+                        self._action_node_id(metadata, ontology_rid),
+                        "full-action-metadata",
+                        "unresolved",
+                        "unresolved-action-parameter-type",
+                        f"Generic objectType parameter at {locator} does not identify a concrete type",
+                        locator=locator,
+                    )
         except BudgetExhausted as error:
             unique = {reference[:3]: reference for reference in references}
-            error.partial_action_references = [
-                unique[key] for key in sorted(unique)
-            ]
+            error.partial_action_references = [unique[key] for key in sorted(unique)]
             raise
         unique = {reference[:3]: reference for reference in references}
         return [unique[key] for key in sorted(unique)]
@@ -2572,9 +3169,7 @@ class DependencyGraphService(BaseService):
             context.caches[("query-reference-closure", target.node_id)] = closure
         except BudgetExhausted as error:
             partial_evidence = [
-                self._add_evidence(
-                    context, operation_id, locator, locator, name
-                ).id
+                self._add_evidence(context, operation_id, locator, locator, name).id
                 for _, name, locator in getattr(error, "partial_query_leaves", ())
             ]
             self._finish_coverage(
@@ -2623,7 +3218,11 @@ class DependencyGraphService(BaseService):
                 self._add_edge(context, source, edge_target, relation, [evidence.id])
             for gap in result["gaps"]:
                 has_gap = True
-                coverage = "unsupported" if gap["reason_code"] == "unsupported-query-data-type" else "unresolved"
+                coverage = (
+                    "unsupported"
+                    if gap["reason_code"] == "unsupported-query-data-type"
+                    else "unresolved"
+                )
                 self._add_gap(
                     context,
                     target.node_id,
@@ -2682,42 +3281,105 @@ class DependencyGraphService(BaseService):
                     if discriminator == "typeReference":
                         reference_id = getattr(current, "type_id", None)
                         if reference_id is None:
-                            gaps.add(("invalid-response", current_locator, "Missing query type reference ID"))
+                            gaps.add(
+                                (
+                                    "invalid-response",
+                                    current_locator,
+                                    "Missing query type reference ID",
+                                )
+                            )
                         else:
                             references.add((str(reference_id), current_locator))
                         continue
                     if discriminator in {"object", "objectSet"}:
-                        name = getattr(current, "object_type_api_name", None) or getattr(current, "object_api_name", None)
+                        name = getattr(
+                            current, "object_type_api_name", None
+                        ) or getattr(current, "object_api_name", None)
                         if name:
                             leaves.add(("object-type", str(name), current_locator))
                         else:
-                            gaps.add(("invalid-response", current_locator, "Object query type has no concrete API name"))
+                            gaps.add(
+                                (
+                                    "invalid-response",
+                                    current_locator,
+                                    "Object query type has no concrete API name",
+                                )
+                            )
                         continue
                     if discriminator in {"interfaceObject", "interfaceObjectSet"}:
                         name = getattr(current, "interface_type_api_name", None)
                         if name:
                             leaves.add(("interface-type", str(name), current_locator))
                         else:
-                            gaps.add(("invalid-response", current_locator, "Interface query type has no concrete API name"))
+                            gaps.add(
+                                (
+                                    "invalid-response",
+                                    current_locator,
+                                    "Interface query type has no concrete API name",
+                                )
+                            )
                         continue
-                    if discriminator == "unsupported" or type(current).__name__ == "UnsupportedType":
-                        gaps.add(("unsupported-query-data-type", current_locator, "Reachable query data type is unsupported by the SDK"))
+                    if (
+                        discriminator == "unsupported"
+                        or type(current).__name__ == "UnsupportedType"
+                    ):
+                        gaps.add(
+                            (
+                                "unsupported-query-data-type",
+                                current_locator,
+                                "Reachable query data type is unsupported by the SDK",
+                            )
+                        )
                         continue
                     children: list[tuple[str, Any]] = []
                     if discriminator in {"array", "set"}:
                         children.append(("subType", getattr(current, "sub_type", None)))
                     elif discriminator == "union":
-                        children.extend((f"unionTypes[{index}]", item) for index, item in enumerate(getattr(current, "union_types", []) or []))
+                        children.extend(
+                            (f"unionTypes[{index}]", item)
+                            for index, item in enumerate(
+                                getattr(current, "union_types", []) or []
+                            )
+                        )
                     elif discriminator == "struct":
-                        children.extend((f"fields[{index}].fieldType", getattr(item, "field_type", None)) for index, item in enumerate(getattr(current, "fields", []) or []))
-                    elif discriminator in {"entrySet", "twoDimensionalAggregation", "threeDimensionalAggregation"}:
-                        children.extend((("keyType", getattr(current, "key_type", None)), ("valueType", getattr(current, "value_type", None))))
+                        children.extend(
+                            (
+                                f"fields[{index}].fieldType",
+                                getattr(item, "field_type", None),
+                            )
+                            for index, item in enumerate(
+                                getattr(current, "fields", []) or []
+                            )
+                        )
+                    elif discriminator in {
+                        "entrySet",
+                        "twoDimensionalAggregation",
+                        "threeDimensionalAggregation",
+                    }:
+                        children.extend(
+                            (
+                                ("keyType", getattr(current, "key_type", None)),
+                                ("valueType", getattr(current, "value_type", None)),
+                            )
+                        )
                     elif discriminator not in QUERY_DATA_TYPE_TYPES:
-                        gaps.add(("invalid-response", current_locator, f"Unknown reachable query data type variant: {discriminator or type(current).__name__}"))
+                        gaps.add(
+                            (
+                                "invalid-response",
+                                current_locator,
+                                f"Unknown reachable query data type variant: {discriminator or type(current).__name__}",
+                            )
+                        )
                     for child_name, child in reversed(children):
                         child_locator = f"{current_locator}.{child_name}"
                         if child is None:
-                            gaps.add(("invalid-response", child_locator, "Missing query data type child"))
+                            gaps.add(
+                                (
+                                    "invalid-response",
+                                    child_locator,
+                                    "Missing query data type child",
+                                )
+                            )
                         else:
                             work.append((child, child_locator, depth + 1))
             except BudgetExhausted as error:
@@ -2753,11 +3415,22 @@ class DependencyGraphService(BaseService):
             for definition_leaves in direct_leaves.values():
                 leaves.update(definition_leaves)
             error.partial_query_leaves.extend(
-                leaf for leaf in sorted(leaves) if leaf not in error.partial_query_leaves
+                leaf
+                for leaf in sorted(leaves)
+                if leaf not in error.partial_query_leaves
             )
 
         reachable: set[str] = set()
-        frontier: deque[tuple[str, int]] = deque((reference_id, 0) for reference_id in sorted({reference_id for _, _, references in root_scans.values() for reference_id, _ in references}))
+        frontier: deque[tuple[str, int]] = deque(
+            (reference_id, 0)
+            for reference_id in sorted(
+                {
+                    reference_id
+                    for _, _, references in root_scans.values()
+                    for reference_id, _ in references
+                }
+            )
+        )
         while frontier:
             reference_id, depth = frontier.popleft()
             try:
@@ -2771,7 +3444,11 @@ class DependencyGraphService(BaseService):
             reachable.add(reference_id)
             if reference_id not in definitions:
                 direct_gaps[reference_id].add(
-                    ("invalid-response", f"typeReferences.{reference_id}", f"Missing reachable type reference {reference_id}")
+                    (
+                        "invalid-response",
+                        f"typeReferences.{reference_id}",
+                        f"Missing reachable type reference {reference_id}",
+                    )
                 )
                 continue
             base = f"typeReferences.{reference_id}"
@@ -2817,7 +3494,13 @@ class DependencyGraphService(BaseService):
                     continue
                 visited.add(reference_id)
                 if reference_id not in definitions:
-                    gaps.add(("invalid-response", witness, f"Missing reachable type reference {reference_id}"))
+                    gaps.add(
+                        (
+                            "invalid-response",
+                            witness,
+                            f"Missing reachable type reference {reference_id}",
+                        )
+                    )
                     continue
                 base = f"typeReferences.{reference_id}"
                 for kind, name, locator in direct_leaves[reference_id]:
@@ -2903,8 +3586,14 @@ class DependencyGraphService(BaseService):
         record = self._coverage_record(
             context, "dataset", "schedule-reverse-index", target.node_id
         )
-        compass = self._coverage_record(context, target.kind, "compass-metadata", target.node_id)
-        resource_evidence = [evidence.id for evidence in context.evidence.values() if evidence.locator == "resource"]
+        compass = self._coverage_record(
+            context, target.kind, "compass-metadata", target.node_id
+        )
+        resource_evidence = [
+            evidence.id
+            for evidence in context.evidence.values()
+            if evidence.locator == "resource"
+        ]
         self._finish_coverage(compass, "covered", evidence_ids=resource_evidence)
         page_token: Optional[str] = None
         reverse_evidence: list[str] = []
@@ -2921,7 +3610,10 @@ class DependencyGraphService(BaseService):
                     "dataset_rid": dataset_rid,
                     "page_size": page_size,
                 }
-                branch = context.read_context.dataset_branch or context.read_context.requested_branch
+                branch = (
+                    context.read_context.dataset_branch
+                    or context.read_context.requested_branch
+                )
                 if branch is not None:
                     kwargs["branch_name"] = branch
                 if page_token is not None:
@@ -3096,11 +3788,16 @@ class DependencyGraphService(BaseService):
             target_type = target_value.get("type")
             detail_status = "covered"
             detail_reason: Optional[str] = None
-            if not action or not target_value or target_type not in {
-                "manual",
-                "upstream",
-                "connecting",
-            }:
+            if (
+                not action
+                or not target_value
+                or target_type
+                not in {
+                    "manual",
+                    "upstream",
+                    "connecting",
+                }
+            ):
                 detail_status = "unresolved"
                 detail_reason = "invalid-schedule-action-target"
                 self._add_gap(
@@ -3115,11 +3812,18 @@ class DependencyGraphService(BaseService):
                 ("input_rids", "schedule-consumes-resource", True),
                 ("target_rids", "schedule-produces-resource", False),
             ):
-                for index, resource_rid in enumerate(target_value.get(field_name, []) or []):
+                for index, resource_rid in enumerate(
+                    target_value.get(field_name, []) or []
+                ):
                     context.budget.charge("items")
                     locator = f"action.target.{field_name}[{index}]"
                     evidence = self._add_evidence(
-                        context, operation_id, locator, locator, resource_rid, target_type
+                        context,
+                        operation_id,
+                        locator,
+                        locator,
+                        resource_rid,
+                        target_type,
                     )
                     detail_evidence.append(evidence.id)
                     resource_node = self._add_node(
@@ -3152,11 +3856,18 @@ class DependencyGraphService(BaseService):
             if scope:
                 scope_type = scope.get("type")
                 if scope_type == "project":
-                    for index, project_rid in enumerate(scope.get("project_rids", []) or []):
+                    for index, project_rid in enumerate(
+                        scope.get("project_rids", []) or []
+                    ):
                         context.budget.charge("items")
                         locator = f"scope_mode.project_rids[{index}]"
                         evidence = self._add_evidence(
-                            context, operation_id, locator, locator, project_rid, scope_type
+                            context,
+                            operation_id,
+                            locator,
+                            locator,
+                            project_rid,
+                            scope_type,
                         )
                         detail_evidence.append(evidence.id)
                         project = self._add_node(
@@ -3223,7 +3934,10 @@ class DependencyGraphService(BaseService):
                     evidence_ids=trigger_evidence,
                 )
         self._collect_affected_resources(
-            context, schedule_node, orchestration, records["schedule-affected-resources"]
+            context,
+            schedule_node,
+            orchestration,
+            records["schedule-affected-resources"],
         )
         self._collect_runs(
             context, schedule_node, orchestration, records["schedule-runs"]
@@ -3343,7 +4057,10 @@ class DependencyGraphService(BaseService):
                 context,
                 "schedule.get-affected-resources",
                 orchestration.get_schedule_affected_resources,
-                {"schedule_rid": schedule_node.identifiers["schedule_rid"], "preview": True},
+                {
+                    "schedule_rid": schedule_node.identifiers["schedule_rid"],
+                    "preview": True,
+                },
                 target=schedule_node.identifiers["schedule_rid"],
             )
         except Exception as error:
@@ -3352,7 +4069,9 @@ class DependencyGraphService(BaseService):
             )
             return
         evidence_ids: list[str] = []
-        for index, resource_rid in enumerate(response.get("affected_resources", []) or []):
+        for index, resource_rid in enumerate(
+            response.get("affected_resources", []) or []
+        ):
             context.budget.charge("items")
             locator = f"affectedResources[{index}]"
             evidence = self._add_evidence(
@@ -3408,7 +4127,10 @@ class DependencyGraphService(BaseService):
                 for index, run in enumerate(runs):
                     context.budget.charge("items")
                     result = run.get("result") or {}
-                    run_rid = str(run.get("rid") or f"{schedule_node.identifiers['schedule_rid']}#run-{index}")
+                    run_rid = str(
+                        run.get("rid")
+                        or f"{schedule_node.identifiers['schedule_rid']}#run-{index}"
+                    )
                     evidence = self._add_evidence(
                         context,
                         operation_id,
@@ -3522,9 +4244,7 @@ class DependencyGraphService(BaseService):
     ) -> None:
         page_token: Optional[str] = None
         job_evidence: list[str] = []
-        output_work: list[
-            tuple[Node, Mapping[str, Any], str, int, CoverageRecord]
-        ] = []
+        output_work: list[tuple[Node, Mapping[str, Any], str, int, CoverageRecord]] = []
         try:
             while True:
                 page_size = context.budget.reserve_page(100)
@@ -3544,7 +4264,10 @@ class DependencyGraphService(BaseService):
                 jobs = list(response.get("jobs", []) or [])
                 for index, job in enumerate(jobs):
                     context.budget.charge("items")
-                    job_rid = str(job.get("rid") or f"{build_node.identifiers['build_rid']}#job-{index}")
+                    job_rid = str(
+                        job.get("rid")
+                        or f"{build_node.identifiers['build_rid']}#job-{index}"
+                    )
                     evidence = self._add_evidence(
                         context,
                         operation_id,
@@ -3819,7 +4542,10 @@ class DependencyGraphService(BaseService):
                 best_depth[neighbor] = new_depth
                 new_nodes = node_ids + (neighbor,)
                 path_id = _stable_id(
-                    "path", root_node_id, neighbor, *[item.edge_id for item in new_steps]
+                    "path",
+                    root_node_id,
+                    neighbor,
+                    *[item.edge_id for item in new_steps],
                 )
                 labels = [context.nodes[node_id].display_name for node_id in new_nodes]
                 evidence_ids = tuple(
@@ -3832,17 +4558,17 @@ class DependencyGraphService(BaseService):
                     )
                 )
                 path_payload = {
-                        "id": path_id,
-                        "root_node_id": root_node_id,
-                        "related_node_id": neighbor,
-                        "hop_count": new_depth,
-                        "direction": path_direction,
-                        "node_ids": list(new_nodes),
-                        "node_labels": labels,
-                        "readable_path": " -> ".join(labels),
-                        "steps": [self._serialize(item) for item in new_steps],
-                        "evidence_ids": list(evidence_ids),
-                    }
+                    "id": path_id,
+                    "root_node_id": root_node_id,
+                    "related_node_id": neighbor,
+                    "hop_count": new_depth,
+                    "direction": path_direction,
+                    "node_ids": list(new_nodes),
+                    "node_labels": labels,
+                    "readable_path": " -> ".join(labels),
+                    "steps": [self._serialize(item) for item in new_steps],
+                    "evidence_ids": list(evidence_ids),
+                }
                 if direction == "both" or path_direction == direction:
                     paths.append(path_payload)
                 queue.append((neighbor, new_steps, new_nodes))
@@ -4022,15 +4748,13 @@ class DependencyGraphService(BaseService):
                         "should_verify_before_deploy",
                     )
                     for item in classification["verification"][bucket]
-                    if item.get("reason") == "impact" and item.get("subject_display_name")
+                    if item.get("reason") == "impact"
+                    and item.get("subject_display_name")
                 }
             )
         else:
             verification_needed = sorted(
-                {
-                    context.nodes[path["related_node_id"]].display_name
-                    for path in ranked
-                }
+                {context.nodes[path["related_node_id"]].display_name for path in ranked}
             )
         if uncertainty:
             verification_needed.append("Resolve or accept intersecting coverage gaps")
@@ -4074,7 +4798,9 @@ class DependencyGraphService(BaseService):
             return "rename"
         if "remove" in words or "delete" in words or "drop" in words:
             return "remove-delete"
-        if "action" in words and ({"input", "inputs", "parameter", "parameters"} & words):
+        if "action" in words and (
+            {"input", "inputs", "parameter", "parameters"} & words
+        ):
             return "action-input-change"
         if "query" in words and ({"output", "outputs", "return", "returns"} & words):
             return "query-output-change"
@@ -4128,7 +4854,9 @@ class DependencyGraphService(BaseService):
                 category = self._resolve_impact_category(
                     path["relation_kind"], direction_class, change_type
                 )
-                terminal_edge_id = path["steps"][-1]["edge_id"] if path.get("steps") else None
+                terminal_edge_id = (
+                    path["steps"][-1]["edge_id"] if path.get("steps") else None
+                )
                 groups[key] = {
                     "impact_id": _stable_id("impact", *key),
                     "related_node_id": path["related_node_id"],
@@ -4288,7 +5016,10 @@ class DependencyGraphService(BaseService):
                     set(existing[1].get("coverage_record_ids", ()))
                     | set(candidate["coverage_record_ids"])
                 )
-            if existing is None or bucket_priority[bucket] > bucket_priority[existing[0]]:
+            if (
+                existing is None
+                or bucket_priority[bucket] > bucket_priority[existing[0]]
+            ):
                 subject_candidates[subject_node_id] = (bucket, candidate)
             elif (
                 bucket == existing[0]
@@ -4300,9 +5031,7 @@ class DependencyGraphService(BaseService):
                 subject_candidates[subject_node_id] = (bucket, candidate)
             elif existing is not None:
                 existing[1]["related_gap_ids"] = candidate["related_gap_ids"]
-                existing[1]["coverage_record_ids"] = candidate[
-                    "coverage_record_ids"
-                ]
+                existing[1]["coverage_record_ids"] = candidate["coverage_record_ids"]
 
         for group_name, bucket in (
             ("critical_paths", "must_verify_before_merge"),
@@ -4617,7 +5346,9 @@ class DependencyGraphService(BaseService):
         affected_fields: set[str] = set()
         for index, rule in enumerate(getattr(metadata, "full_logic_rules", []) or []):
             discriminator = (
-                rule.get("type") if isinstance(rule, Mapping) else getattr(rule, "type", None)
+                rule.get("type")
+                if isinstance(rule, Mapping)
+                else getattr(rule, "type", None)
             )
             operation: Optional[str] = None
             if str(discriminator).startswith("delete"):
@@ -4644,7 +5375,8 @@ class DependencyGraphService(BaseService):
             {
                 context.nodes[edge.target].display_name
                 for edge in context.edges.values()
-                if edge.relation_kind == "action-uses-function" and edge.source == node.id
+                if edge.relation_kind == "action-uses-function"
+                and edge.source == node.id
             }
         )
         return {
@@ -4679,9 +5411,7 @@ class DependencyGraphService(BaseService):
             )
         ]
         roots = {
-            f"parameters.{parameter_id}.dataType": getattr(
-                parameter, "data_type", None
-            )
+            f"parameters.{parameter_id}.dataType": getattr(parameter, "data_type", None)
             for parameter_id, parameter in parameter_items
         }
         roots["output"] = getattr(metadata, "output", None)
@@ -4724,7 +5454,8 @@ class DependencyGraphService(BaseService):
             {
                 context.nodes[edge.source].display_name
                 for edge in context.edges.values()
-                if edge.relation_kind == "query-accepts-object" and edge.target == node.id
+                if edge.relation_kind == "query-accepts-object"
+                and edge.target == node.id
                 and context.nodes[edge.source].kind in {"object-type", "interface-type"}
             }
         )
@@ -4783,7 +5514,9 @@ class DependencyGraphService(BaseService):
                 continue
             if isinstance(item, Mapping):
                 for key, child in item.items():
-                    if str(key).endswith(("propertyArguments", "sharedPropertyArguments")) and isinstance(child, Mapping):
+                    if str(key).endswith(
+                        ("propertyArguments", "sharedPropertyArguments")
+                    ) and isinstance(child, Mapping):
                         keys.update(str(name) for name in child.keys())
                     work.append(child)
                 continue
@@ -4868,13 +5601,17 @@ class DependencyGraphService(BaseService):
             if isinstance(node, Mapping) and node.get("id")
         }
 
-        def node_identity(node: Mapping[str, Any]) -> Optional[tuple[str, tuple[tuple[str, str], ...]]]:
+        def node_identity(
+            node: Mapping[str, Any],
+        ) -> Optional[tuple[str, tuple[tuple[str, str], ...]]]:
             identifiers = node.get("identifiers")
             if not isinstance(identifiers, Mapping) or not identifiers:
                 return None
             return (
                 str(node.get("kind") or ""),
-                tuple(sorted((str(key), str(value)) for key, value in identifiers.items())),
+                tuple(
+                    sorted((str(key), str(value)) for key, value in identifiers.items())
+                ),
             )
 
         current_by_identity = {
@@ -4920,9 +5657,7 @@ class DependencyGraphService(BaseService):
             edge_target = str(edge.get("target") or "")
             baseline_adjacency[source].append(edge)
             baseline_adjacency[edge_target].append(edge)
-        requested_direction = str(
-            context.caches.get(("requested-direction",), "both")
-        )
+        requested_direction = str(context.caches.get(("requested-direction",), "both"))
 
         def can_propagate(edge: Mapping[str, Any], from_node: str) -> bool:
             if str(edge.get("traversal_class") or "") == "adjacent-structural":
@@ -4983,7 +5718,8 @@ class DependencyGraphService(BaseService):
                 "to_coverage": current_edges[edge_id].coverage,
             }
             for edge_id in sorted(set(baseline_edges) & set(current_edges))
-            if baseline_edges[edge_id].get("coverage") != current_edges[edge_id].coverage
+            if baseline_edges[edge_id].get("coverage")
+            != current_edges[edge_id].coverage
         ]
         baseline_contexts = baseline.get("read_contexts") or []
         baseline_context = baseline_contexts[0] if baseline_contexts else {}
@@ -5037,7 +5773,8 @@ class DependencyGraphService(BaseService):
         current_limits = context.budget.snapshot()["limits"]
         comparable = (
             target_identity(baseline_target) == target_identity(current_target)
-            and baseline_context.get("ontology_rid") == context.read_context.ontology_rid
+            and baseline_context.get("ontology_rid")
+            == context.read_context.ontology_rid
             and baseline_context.get("requested_branch")
             == context.read_context.requested_branch
             and all(
@@ -5084,9 +5821,7 @@ class DependencyGraphService(BaseService):
         )
         contracts = self._project_action_query_contracts(context, impacts)
         diff = (
-            self._diff_graphs(
-                context, compare_artifact, impacts, completeness, target
-            )
+            self._diff_graphs(context, compare_artifact, impacts, completeness, target)
             if compare_artifact is not None
             else None
         )
@@ -5138,9 +5873,7 @@ class DependencyGraphService(BaseService):
     def _declared_fields(value: Any) -> list[tuple[str, Any]]:
         model_fields = getattr(type(value), "model_fields", None)
         if model_fields is not None:
-            return [
-                (name, getattr(value, name, None)) for name in sorted(model_fields)
-            ]
+            return [(name, getattr(value, name, None)) for name in sorted(model_fields)]
         if isinstance(value, Mapping):
             return [(str(name), item) for name, item in sorted(value.items())]
         return []
@@ -5161,8 +5894,7 @@ class DependencyGraphService(BaseService):
         if hasattr(value, "dict"):
             return value.dict(by_alias=False)
         return {
-            name: cls._model_value(item)
-            for name, item in cls._declared_fields(value)
+            name: cls._model_value(item) for name, item in cls._declared_fields(value)
         }
 
     @classmethod

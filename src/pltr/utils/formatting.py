@@ -73,9 +73,12 @@ class OutputFormatter:
     ) -> str:
         """Render one already-complete dependency analysis without rediscovery."""
         if format_type == "json":
-            rendered = json.dumps(
-                self._make_json_serializable(result), indent=2, sort_keys=True
-            ) + "\n"
+            rendered = (
+                json.dumps(
+                    self._make_json_serializable(result), indent=2, sort_keys=True
+                )
+                + "\n"
+            )
         elif format_type == "csv":
             rendered = self._format_dependency_csv(result)
         elif format_type == "table":
@@ -147,7 +150,9 @@ class OutputFormatter:
         collections = (
             (
                 "artifact",
-                [result["artifact"]] if isinstance(result.get("artifact"), dict) else [],
+                [result["artifact"]]
+                if isinstance(result.get("artifact"), dict)
+                else [],
             ),
             (
                 "agent",
@@ -164,7 +169,8 @@ class OutputFormatter:
             (
                 "operation-provenance",
                 result.get(
-                    "operation_provenance", result.get("operation_provenance_records", [])
+                    "operation_provenance",
+                    result.get("operation_provenance_records", []),
                 ),
             ),
         )
@@ -183,7 +189,9 @@ class OutputFormatter:
                     {
                         "row_kind": row_kind,
                         "id": str(identifier),
-                        "record": json.dumps(value, sort_keys=True, separators=(",", ":")),
+                        "record": json.dumps(
+                            value, sort_keys=True, separators=(",", ":")
+                        ),
                     }
                 )
         output = StringIO()
@@ -207,11 +215,16 @@ class OutputFormatter:
             {
                 str(context.get("requested_branch"))
                 for context in read_contexts
-                if isinstance(context, dict) and context.get("requested_branch") is not None
+                if isinstance(context, dict)
+                and context.get("requested_branch") is not None
             }
         )
         summary = result.get("summary") or {}
-        assessment = summary.get("assessment") or result.get("assessment") or "Dependency analysis complete."
+        assessment = (
+            summary.get("assessment")
+            or result.get("assessment")
+            or "Dependency analysis complete."
+        )
         gaps = result.get("gaps") or []
         budget = result.get("budget") or {}
         artifact = result.get("artifact") or {}
@@ -244,28 +257,46 @@ class OutputFormatter:
                 )
                 if isinstance(readable, list):
                     readable = " -> ".join(str(part) for part in readable)
-                direction = path.get("direction") or path.get("root_relative_direction") or "adjacent"
+                direction = (
+                    path.get("direction")
+                    or path.get("root_relative_direction")
+                    or "adjacent"
+                )
                 evidence_summary = path.get("evidence_summary") or {}
-                locator = path.get("evidence_locator") or evidence_summary.get("locator")
-                namespace = path.get("sdk_namespace") or evidence_summary.get("sdk_namespace")
+                locator = path.get("evidence_locator") or evidence_summary.get(
+                    "locator"
+                )
+                namespace = path.get("sdk_namespace") or evidence_summary.get(
+                    "sdk_namespace"
+                )
                 method = path.get("sdk_method") or evidence_summary.get("sdk_method")
                 suffix = ", ".join(
                     part
                     for part in (
                         f"evidence {locator}" if locator else "",
-                        f"{namespace}.{method}" if namespace and method else namespace or method or "",
+                        f"{namespace}.{method}"
+                        if namespace and method
+                        else namespace or method or "",
                     )
                     if part
                 )
-                lines.append(f"  - [{direction}] {readable}" + (f" ({suffix})" if suffix else ""))
+                lines.append(
+                    f"  - [{direction}] {readable}" + (f" ({suffix})" if suffix else "")
+                )
         else:
             lines.append("Relationships: none discovered within verified coverage")
 
         reasons: Dict[str, int] = {}
         for gap in gaps:
-            reason = gap.get("reason_code", "unknown") if isinstance(gap, dict) else "unknown"
+            reason = (
+                gap.get("reason_code", "unknown")
+                if isinstance(gap, dict)
+                else "unknown"
+            )
             reasons[reason] = reasons.get(reason, 0) + 1
-        gap_summary = ", ".join(f"{key}={reasons[key]}" for key in sorted(reasons)) or "none"
+        gap_summary = (
+            ", ".join(f"{key}={reasons[key]}" for key in sorted(reasons)) or "none"
+        )
         lines.append(f"Coverage gaps ({len(gaps)}): {gap_summary}")
         stale_messages = sorted(
             {
@@ -288,10 +319,13 @@ class OutputFormatter:
         used = budget.get("used", {}) if isinstance(budget, dict) else {}
         limits = budget.get("limits", {}) if isinstance(budget, dict) else {}
         dimensions = sorted(set(used) | set(limits))
-        budget_summary = ", ".join(
-            f"{dimension}={used.get(dimension, 0)}/{limits.get(dimension, '?')}"
-            for dimension in dimensions
-        ) or "not reported"
+        budget_summary = (
+            ", ".join(
+                f"{dimension}={used.get(dimension, 0)}/{limits.get(dimension, '?')}"
+                for dimension in dimensions
+            )
+            or "not reported"
+        )
         lines.append(f"Budget: {budget_summary}")
         agent = result.get("agent") or {}
         if agent:
@@ -339,7 +373,9 @@ class OutputFormatter:
                     part
                     for part in (
                         str(change.get("text")) if change.get("text") else "",
-                        f"type={change.get('change_type')}" if change.get("change_type") else "",
+                        f"type={change.get('change_type')}"
+                        if change.get("change_type")
+                        else "",
                         f"source={change.get('change_type_source')}",
                     )
                     if part
@@ -359,7 +395,11 @@ class OutputFormatter:
             items = verification.get(bucket) or []
             lines.append(f"{label} ({len(items)}):")
             for item in items[:10]:
-                subject = item.get("subject_display_name") or item.get("subject_node_id") or "(analysis-wide)"
+                subject = (
+                    item.get("subject_display_name")
+                    or item.get("subject_node_id")
+                    or "(analysis-wide)"
+                )
                 reason = item.get("reason", "impact")
                 lines.append(f"  - [{reason}] {subject}")
             if len(items) > 10:

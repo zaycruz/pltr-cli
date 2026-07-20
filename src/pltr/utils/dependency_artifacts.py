@@ -121,7 +121,9 @@ def write_dependency_artifact(
         descriptor, temporary_name = tempfile.mkstemp(
             prefix=f".{destination.name}.", suffix=".tmp", dir=destination.parent
         )
-        os.fchmod(descriptor, 0o600)
+        fchmod = getattr(os, "fchmod", None)
+        if fchmod is not None:
+            fchmod(descriptor, 0o600)
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
             json.dump(document, handle, ensure_ascii=False, indent=2, sort_keys=True)
             handle.write("\n")
@@ -130,11 +132,12 @@ def write_dependency_artifact(
         os.replace(temporary_name, destination)
         temporary_name = None
         os.chmod(destination, 0o600)
-        directory_fd = os.open(destination.parent, os.O_RDONLY)
-        try:
-            os.fsync(directory_fd)
-        finally:
-            os.close(directory_fd)
+        if os.name != "nt":
+            directory_fd = os.open(destination.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
     except (OSError, TypeError, ValueError) as exc:
         if temporary_name is not None:
             try:

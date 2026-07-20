@@ -437,9 +437,7 @@ def _run(
         if output_mode_value == "ci":
             _render_fatal(exc, exc.error_class, "json")
             raise typer.Exit(1)
-        raise typer.BadParameter(
-            str(exc), param_hint="--compare-artifact"
-        ) from exc
+        raise typer.BadParameter(str(exc), param_hint="--compare-artifact") from exc
     except (ProfileNotFoundError, MissingCredentialsError) as exc:
         _render_fatal(exc, "authentication", format_type)
         raise typer.Exit(1)
@@ -462,26 +460,69 @@ def _run(
 def object_type(
     ontology_rid: str = typer.Argument(..., help="Ontology RID"),
     object_type: str = typer.Argument(..., help="Object type API name"),
-    branch: Optional[str] = typer.Option(None, "--branch", help="Requested Foundry branch"),
-    profile: Optional[str] = typer.Option(None, "--profile", help="Authentication profile", autocompletion=complete_profile),
-    format: str = typer.Option("table", "--format", "-f", autocompletion=complete_output_format),
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Rendered output path"),
-    graph_output: Optional[Path] = typer.Option(None, "--graph-output", help="Mandatory complete graph artifact path"),
-    change: Optional[str] = typer.Option(None, "--change", help="Intended change to assess"),
+    branch: Optional[str] = typer.Option(
+        None, "--branch", help="Requested Foundry branch"
+    ),
+    profile: Optional[str] = typer.Option(
+        None,
+        "--profile",
+        help="Authentication profile",
+        autocompletion=complete_profile,
+    ),
+    format: str = typer.Option(
+        "table", "--format", "-f", autocompletion=complete_output_format
+    ),
+    output: Optional[Path] = typer.Option(
+        None, "--output", "-o", help="Rendered output path"
+    ),
+    graph_output: Optional[Path] = typer.Option(
+        None, "--graph-output", help="Mandatory complete graph artifact path"
+    ),
+    change: Optional[str] = typer.Option(
+        None, "--change", help="Intended change to assess"
+    ),
     change_type: Optional[ChangeType] = typer.Option(None, "--change-type"),
     output_mode: OutputMode = typer.Option(OutputMode.GRAPH, "--output-mode"),
-    compare_artifact: Optional[Path] = typer.Option(None, "--compare-artifact", help="Prior graph artifact to diff against"),
-    direction: str = typer.Option("both", "--direction", help="both, upstream, downstream, or adjacent"),
+    compare_artifact: Optional[Path] = typer.Option(
+        None, "--compare-artifact", help="Prior graph artifact to diff against"
+    ),
+    direction: str = typer.Option(
+        "both", "--direction", help="both, upstream, downstream, or adjacent"
+    ),
     depth: int = typer.Option(DEFAULT_MAX_DEPTH, "--depth"),
     max_nodes: int = typer.Option(DEFAULT_MAX_NODES, "--max-nodes"),
     max_requests: int = typer.Option(DEFAULT_MAX_REQUESTS, "--max-requests"),
     max_pages: int = typer.Option(DEFAULT_MAX_PAGES, "--max-pages"),
     max_items: int = typer.Option(DEFAULT_MAX_ITEMS, "--max-items"),
-    time_budget_seconds: float = typer.Option(DEFAULT_TIME_BUDGET_SECONDS, "--time-budget-seconds"),
+    time_budget_seconds: float = typer.Option(
+        DEFAULT_TIME_BUDGET_SECONDS, "--time-budget-seconds"
+    ),
     full: bool = typer.Option(False, "--full", help="Expand table rendering only"),
 ) -> None:
     """Analyze an ontology object type."""
-    _run(lambda service, context: service.resolve_object_type(context, ontology_rid, object_type), ontology_rid=ontology_rid, profile=profile, branch=branch, format_type=format, output=output, graph_output=graph_output, change=change, direction=direction, depth=depth, max_nodes=max_nodes, max_requests=max_requests, max_pages=max_pages, max_items=max_items, time_budget_seconds=time_budget_seconds, full=full, change_type=change_type, output_mode=output_mode, compare_artifact=compare_artifact)
+    _run(
+        lambda service, context: service.resolve_object_type(
+            context, ontology_rid, object_type
+        ),
+        ontology_rid=ontology_rid,
+        profile=profile,
+        branch=branch,
+        format_type=format,
+        output=output,
+        graph_output=graph_output,
+        change=change,
+        direction=direction,
+        depth=depth,
+        max_nodes=max_nodes,
+        max_requests=max_requests,
+        max_pages=max_pages,
+        max_items=max_items,
+        time_budget_seconds=time_budget_seconds,
+        full=full,
+        change_type=change_type,
+        output_mode=output_mode,
+        compare_artifact=compare_artifact,
+    )
 
 
 @app.command("property")
@@ -489,43 +530,245 @@ def property_command(
     ontology_rid: str = typer.Argument(..., help="Ontology RID"),
     object_type: str = typer.Argument(..., help="Object type API name"),
     property: str = typer.Argument(..., help="Property API name"),
-    branch: Optional[str] = typer.Option(None, "--branch"), profile: Optional[str] = typer.Option(None, "--profile", autocompletion=complete_profile), format: str = typer.Option("table", "--format", "-f", autocompletion=complete_output_format), output: Optional[Path] = typer.Option(None, "--output", "-o"), graph_output: Optional[Path] = typer.Option(None, "--graph-output"), change: Optional[str] = typer.Option(None, "--change"), change_type: Optional[ChangeType] = typer.Option(None, "--change-type"), output_mode: OutputMode = typer.Option(OutputMode.GRAPH, "--output-mode"), compare_artifact: Optional[Path] = typer.Option(None, "--compare-artifact"), direction: str = typer.Option("both", "--direction"), depth: int = typer.Option(DEFAULT_MAX_DEPTH, "--depth"), max_nodes: int = typer.Option(DEFAULT_MAX_NODES, "--max-nodes"), max_requests: int = typer.Option(DEFAULT_MAX_REQUESTS, "--max-requests"), max_pages: int = typer.Option(DEFAULT_MAX_PAGES, "--max-pages"), max_items: int = typer.Option(DEFAULT_MAX_ITEMS, "--max-items"), time_budget_seconds: float = typer.Option(DEFAULT_TIME_BUDGET_SECONDS, "--time-budget-seconds"), full: bool = typer.Option(False, "--full"),
+    branch: Optional[str] = typer.Option(None, "--branch"),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", autocompletion=complete_profile
+    ),
+    format: str = typer.Option(
+        "table", "--format", "-f", autocompletion=complete_output_format
+    ),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+    graph_output: Optional[Path] = typer.Option(None, "--graph-output"),
+    change: Optional[str] = typer.Option(None, "--change"),
+    change_type: Optional[ChangeType] = typer.Option(None, "--change-type"),
+    output_mode: OutputMode = typer.Option(OutputMode.GRAPH, "--output-mode"),
+    compare_artifact: Optional[Path] = typer.Option(None, "--compare-artifact"),
+    direction: str = typer.Option("both", "--direction"),
+    depth: int = typer.Option(DEFAULT_MAX_DEPTH, "--depth"),
+    max_nodes: int = typer.Option(DEFAULT_MAX_NODES, "--max-nodes"),
+    max_requests: int = typer.Option(DEFAULT_MAX_REQUESTS, "--max-requests"),
+    max_pages: int = typer.Option(DEFAULT_MAX_PAGES, "--max-pages"),
+    max_items: int = typer.Option(DEFAULT_MAX_ITEMS, "--max-items"),
+    time_budget_seconds: float = typer.Option(
+        DEFAULT_TIME_BUDGET_SECONDS, "--time-budget-seconds"
+    ),
+    full: bool = typer.Option(False, "--full"),
 ) -> None:
     """Analyze one property on an ontology object type."""
-    _run(lambda service, context: service.resolve_property(context, ontology_rid, object_type, property), ontology_rid=ontology_rid, profile=profile, branch=branch, format_type=format, output=output, graph_output=graph_output, change=change, direction=direction, depth=depth, max_nodes=max_nodes, max_requests=max_requests, max_pages=max_pages, max_items=max_items, time_budget_seconds=time_budget_seconds, full=full, change_type=change_type, output_mode=output_mode, compare_artifact=compare_artifact)
+    _run(
+        lambda service, context: service.resolve_property(
+            context, ontology_rid, object_type, property
+        ),
+        ontology_rid=ontology_rid,
+        profile=profile,
+        branch=branch,
+        format_type=format,
+        output=output,
+        graph_output=graph_output,
+        change=change,
+        direction=direction,
+        depth=depth,
+        max_nodes=max_nodes,
+        max_requests=max_requests,
+        max_pages=max_pages,
+        max_items=max_items,
+        time_budget_seconds=time_budget_seconds,
+        full=full,
+        change_type=change_type,
+        output_mode=output_mode,
+        compare_artifact=compare_artifact,
+    )
 
 
 @app.command("link-type")
 def link_type(
-    ontology_rid: str = typer.Argument(...), object_type: str = typer.Argument(...), link_type: str = typer.Argument(...),
-    branch: Optional[str] = typer.Option(None, "--branch"), profile: Optional[str] = typer.Option(None, "--profile", autocompletion=complete_profile), format: str = typer.Option("table", "--format", "-f", autocompletion=complete_output_format), output: Optional[Path] = typer.Option(None, "--output", "-o"), graph_output: Optional[Path] = typer.Option(None, "--graph-output"), change: Optional[str] = typer.Option(None, "--change"), change_type: Optional[ChangeType] = typer.Option(None, "--change-type"), output_mode: OutputMode = typer.Option(OutputMode.GRAPH, "--output-mode"), compare_artifact: Optional[Path] = typer.Option(None, "--compare-artifact"), direction: str = typer.Option("both", "--direction"), depth: int = typer.Option(DEFAULT_MAX_DEPTH, "--depth"), max_nodes: int = typer.Option(DEFAULT_MAX_NODES, "--max-nodes"), max_requests: int = typer.Option(DEFAULT_MAX_REQUESTS, "--max-requests"), max_pages: int = typer.Option(DEFAULT_MAX_PAGES, "--max-pages"), max_items: int = typer.Option(DEFAULT_MAX_ITEMS, "--max-items"), time_budget_seconds: float = typer.Option(DEFAULT_TIME_BUDGET_SECONDS, "--time-budget-seconds"), full: bool = typer.Option(False, "--full"),
+    ontology_rid: str = typer.Argument(...),
+    object_type: str = typer.Argument(...),
+    link_type: str = typer.Argument(...),
+    branch: Optional[str] = typer.Option(None, "--branch"),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", autocompletion=complete_profile
+    ),
+    format: str = typer.Option(
+        "table", "--format", "-f", autocompletion=complete_output_format
+    ),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+    graph_output: Optional[Path] = typer.Option(None, "--graph-output"),
+    change: Optional[str] = typer.Option(None, "--change"),
+    change_type: Optional[ChangeType] = typer.Option(None, "--change-type"),
+    output_mode: OutputMode = typer.Option(OutputMode.GRAPH, "--output-mode"),
+    compare_artifact: Optional[Path] = typer.Option(None, "--compare-artifact"),
+    direction: str = typer.Option("both", "--direction"),
+    depth: int = typer.Option(DEFAULT_MAX_DEPTH, "--depth"),
+    max_nodes: int = typer.Option(DEFAULT_MAX_NODES, "--max-nodes"),
+    max_requests: int = typer.Option(DEFAULT_MAX_REQUESTS, "--max-requests"),
+    max_pages: int = typer.Option(DEFAULT_MAX_PAGES, "--max-pages"),
+    max_items: int = typer.Option(DEFAULT_MAX_ITEMS, "--max-items"),
+    time_budget_seconds: float = typer.Option(
+        DEFAULT_TIME_BUDGET_SECONDS, "--time-budget-seconds"
+    ),
+    full: bool = typer.Option(False, "--full"),
 ) -> None:
     """Analyze an ontology link type."""
-    _run(lambda service, context: service.resolve_link_type(context, ontology_rid, object_type, link_type), ontology_rid=ontology_rid, profile=profile, branch=branch, format_type=format, output=output, graph_output=graph_output, change=change, direction=direction, depth=depth, max_nodes=max_nodes, max_requests=max_requests, max_pages=max_pages, max_items=max_items, time_budget_seconds=time_budget_seconds, full=full, change_type=change_type, output_mode=output_mode, compare_artifact=compare_artifact)
+    _run(
+        lambda service, context: service.resolve_link_type(
+            context, ontology_rid, object_type, link_type
+        ),
+        ontology_rid=ontology_rid,
+        profile=profile,
+        branch=branch,
+        format_type=format,
+        output=output,
+        graph_output=graph_output,
+        change=change,
+        direction=direction,
+        depth=depth,
+        max_nodes=max_nodes,
+        max_requests=max_requests,
+        max_pages=max_pages,
+        max_items=max_items,
+        time_budget_seconds=time_budget_seconds,
+        full=full,
+        change_type=change_type,
+        output_mode=output_mode,
+        compare_artifact=compare_artifact,
+    )
 
 
 @app.command("action-type")
 def action_type(
-    ontology_rid: str = typer.Argument(...), action_type: str = typer.Argument(...),
-    branch: Optional[str] = typer.Option(None, "--branch"), profile: Optional[str] = typer.Option(None, "--profile", autocompletion=complete_profile), format: str = typer.Option("table", "--format", "-f", autocompletion=complete_output_format), output: Optional[Path] = typer.Option(None, "--output", "-o"), graph_output: Optional[Path] = typer.Option(None, "--graph-output"), change: Optional[str] = typer.Option(None, "--change"), change_type: Optional[ChangeType] = typer.Option(None, "--change-type"), output_mode: OutputMode = typer.Option(OutputMode.GRAPH, "--output-mode"), compare_artifact: Optional[Path] = typer.Option(None, "--compare-artifact"), direction: str = typer.Option("both", "--direction"), depth: int = typer.Option(DEFAULT_MAX_DEPTH, "--depth"), max_nodes: int = typer.Option(DEFAULT_MAX_NODES, "--max-nodes"), max_requests: int = typer.Option(DEFAULT_MAX_REQUESTS, "--max-requests"), max_pages: int = typer.Option(DEFAULT_MAX_PAGES, "--max-pages"), max_items: int = typer.Option(DEFAULT_MAX_ITEMS, "--max-items"), time_budget_seconds: float = typer.Option(DEFAULT_TIME_BUDGET_SECONDS, "--time-budget-seconds"), full: bool = typer.Option(False, "--full"),
+    ontology_rid: str = typer.Argument(...),
+    action_type: str = typer.Argument(...),
+    branch: Optional[str] = typer.Option(None, "--branch"),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", autocompletion=complete_profile
+    ),
+    format: str = typer.Option(
+        "table", "--format", "-f", autocompletion=complete_output_format
+    ),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+    graph_output: Optional[Path] = typer.Option(None, "--graph-output"),
+    change: Optional[str] = typer.Option(None, "--change"),
+    change_type: Optional[ChangeType] = typer.Option(None, "--change-type"),
+    output_mode: OutputMode = typer.Option(OutputMode.GRAPH, "--output-mode"),
+    compare_artifact: Optional[Path] = typer.Option(None, "--compare-artifact"),
+    direction: str = typer.Option("both", "--direction"),
+    depth: int = typer.Option(DEFAULT_MAX_DEPTH, "--depth"),
+    max_nodes: int = typer.Option(DEFAULT_MAX_NODES, "--max-nodes"),
+    max_requests: int = typer.Option(DEFAULT_MAX_REQUESTS, "--max-requests"),
+    max_pages: int = typer.Option(DEFAULT_MAX_PAGES, "--max-pages"),
+    max_items: int = typer.Option(DEFAULT_MAX_ITEMS, "--max-items"),
+    time_budget_seconds: float = typer.Option(
+        DEFAULT_TIME_BUDGET_SECONDS, "--time-budget-seconds"
+    ),
+    full: bool = typer.Option(False, "--full"),
 ) -> None:
     """Analyze an ontology action type using full metadata."""
-    _run(lambda service, context: service.resolve_action_type(context, ontology_rid, action_type), ontology_rid=ontology_rid, profile=profile, branch=branch, format_type=format, output=output, graph_output=graph_output, change=change, direction=direction, depth=depth, max_nodes=max_nodes, max_requests=max_requests, max_pages=max_pages, max_items=max_items, time_budget_seconds=time_budget_seconds, full=full, change_type=change_type, output_mode=output_mode, compare_artifact=compare_artifact)
+    _run(
+        lambda service, context: service.resolve_action_type(
+            context, ontology_rid, action_type
+        ),
+        ontology_rid=ontology_rid,
+        profile=profile,
+        branch=branch,
+        format_type=format,
+        output=output,
+        graph_output=graph_output,
+        change=change,
+        direction=direction,
+        depth=depth,
+        max_nodes=max_nodes,
+        max_requests=max_requests,
+        max_pages=max_pages,
+        max_items=max_items,
+        time_budget_seconds=time_budget_seconds,
+        full=full,
+        change_type=change_type,
+        output_mode=output_mode,
+        compare_artifact=compare_artifact,
+    )
 
 
 @app.command("query-type")
 def query_type(
-    ontology_rid: str = typer.Argument(...), query_type: str = typer.Argument(...),
-    branch: Optional[str] = typer.Option(None, "--branch"), profile: Optional[str] = typer.Option(None, "--profile", autocompletion=complete_profile), format: str = typer.Option("table", "--format", "-f", autocompletion=complete_output_format), output: Optional[Path] = typer.Option(None, "--output", "-o"), graph_output: Optional[Path] = typer.Option(None, "--graph-output"), change: Optional[str] = typer.Option(None, "--change"), change_type: Optional[ChangeType] = typer.Option(None, "--change-type"), output_mode: OutputMode = typer.Option(OutputMode.GRAPH, "--output-mode"), compare_artifact: Optional[Path] = typer.Option(None, "--compare-artifact"), direction: str = typer.Option("both", "--direction"), depth: int = typer.Option(DEFAULT_MAX_DEPTH, "--depth"), max_nodes: int = typer.Option(DEFAULT_MAX_NODES, "--max-nodes"), max_requests: int = typer.Option(DEFAULT_MAX_REQUESTS, "--max-requests"), max_pages: int = typer.Option(DEFAULT_MAX_PAGES, "--max-pages"), max_items: int = typer.Option(DEFAULT_MAX_ITEMS, "--max-items"), time_budget_seconds: float = typer.Option(DEFAULT_TIME_BUDGET_SECONDS, "--time-budget-seconds"), full: bool = typer.Option(False, "--full"),
+    ontology_rid: str = typer.Argument(...),
+    query_type: str = typer.Argument(...),
+    branch: Optional[str] = typer.Option(None, "--branch"),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", autocompletion=complete_profile
+    ),
+    format: str = typer.Option(
+        "table", "--format", "-f", autocompletion=complete_output_format
+    ),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+    graph_output: Optional[Path] = typer.Option(None, "--graph-output"),
+    change: Optional[str] = typer.Option(None, "--change"),
+    change_type: Optional[ChangeType] = typer.Option(None, "--change-type"),
+    output_mode: OutputMode = typer.Option(OutputMode.GRAPH, "--output-mode"),
+    compare_artifact: Optional[Path] = typer.Option(None, "--compare-artifact"),
+    direction: str = typer.Option("both", "--direction"),
+    depth: int = typer.Option(DEFAULT_MAX_DEPTH, "--depth"),
+    max_nodes: int = typer.Option(DEFAULT_MAX_NODES, "--max-nodes"),
+    max_requests: int = typer.Option(DEFAULT_MAX_REQUESTS, "--max-requests"),
+    max_pages: int = typer.Option(DEFAULT_MAX_PAGES, "--max-pages"),
+    max_items: int = typer.Option(DEFAULT_MAX_ITEMS, "--max-items"),
+    time_budget_seconds: float = typer.Option(
+        DEFAULT_TIME_BUDGET_SECONDS, "--time-budget-seconds"
+    ),
+    full: bool = typer.Option(False, "--full"),
 ) -> None:
     """Analyze an ontology query type."""
-    _run(lambda service, context: service.resolve_query_type(context, ontology_rid, query_type), ontology_rid=ontology_rid, profile=profile, branch=branch, format_type=format, output=output, graph_output=graph_output, change=change, direction=direction, depth=depth, max_nodes=max_nodes, max_requests=max_requests, max_pages=max_pages, max_items=max_items, time_budget_seconds=time_budget_seconds, full=full, change_type=change_type, output_mode=output_mode, compare_artifact=compare_artifact)
+    _run(
+        lambda service, context: service.resolve_query_type(
+            context, ontology_rid, query_type
+        ),
+        ontology_rid=ontology_rid,
+        profile=profile,
+        branch=branch,
+        format_type=format,
+        output=output,
+        graph_output=graph_output,
+        change=change,
+        direction=direction,
+        depth=depth,
+        max_nodes=max_nodes,
+        max_requests=max_requests,
+        max_pages=max_pages,
+        max_items=max_items,
+        time_budget_seconds=time_budget_seconds,
+        full=full,
+        change_type=change_type,
+        output_mode=output_mode,
+        compare_artifact=compare_artifact,
+    )
 
 
 @app.command("resource")
 def resource(
     resource_rid: str = typer.Argument(..., help="Compass-resolvable resource RID"),
-    branch: Optional[str] = typer.Option(None, "--branch"), profile: Optional[str] = typer.Option(None, "--profile", autocompletion=complete_profile), format: str = typer.Option("table", "--format", "-f", autocompletion=complete_output_format), output: Optional[Path] = typer.Option(None, "--output", "-o"), graph_output: Optional[Path] = typer.Option(None, "--graph-output"), change: Optional[str] = typer.Option(None, "--change"), change_type: Optional[ChangeType] = typer.Option(None, "--change-type"), output_mode: OutputMode = typer.Option(OutputMode.GRAPH, "--output-mode"), compare_artifact: Optional[Path] = typer.Option(None, "--compare-artifact"), direction: str = typer.Option("both", "--direction"), depth: int = typer.Option(DEFAULT_MAX_DEPTH, "--depth"), max_nodes: int = typer.Option(DEFAULT_MAX_NODES, "--max-nodes"), max_requests: int = typer.Option(DEFAULT_MAX_REQUESTS, "--max-requests"), max_pages: int = typer.Option(DEFAULT_MAX_PAGES, "--max-pages"), max_items: int = typer.Option(DEFAULT_MAX_ITEMS, "--max-items"), time_budget_seconds: float = typer.Option(DEFAULT_TIME_BUDGET_SECONDS, "--time-budget-seconds"), full: bool = typer.Option(False, "--full"),
+    branch: Optional[str] = typer.Option(None, "--branch"),
+    profile: Optional[str] = typer.Option(
+        None, "--profile", autocompletion=complete_profile
+    ),
+    format: str = typer.Option(
+        "table", "--format", "-f", autocompletion=complete_output_format
+    ),
+    output: Optional[Path] = typer.Option(None, "--output", "-o"),
+    graph_output: Optional[Path] = typer.Option(None, "--graph-output"),
+    change: Optional[str] = typer.Option(None, "--change"),
+    change_type: Optional[ChangeType] = typer.Option(None, "--change-type"),
+    output_mode: OutputMode = typer.Option(OutputMode.GRAPH, "--output-mode"),
+    compare_artifact: Optional[Path] = typer.Option(None, "--compare-artifact"),
+    direction: str = typer.Option("both", "--direction"),
+    depth: int = typer.Option(DEFAULT_MAX_DEPTH, "--depth"),
+    max_nodes: int = typer.Option(DEFAULT_MAX_NODES, "--max-nodes"),
+    max_requests: int = typer.Option(DEFAULT_MAX_REQUESTS, "--max-requests"),
+    max_pages: int = typer.Option(DEFAULT_MAX_PAGES, "--max-pages"),
+    max_items: int = typer.Option(DEFAULT_MAX_ITEMS, "--max-items"),
+    time_budget_seconds: float = typer.Option(
+        DEFAULT_TIME_BUDGET_SECONDS, "--time-budget-seconds"
+    ),
+    full: bool = typer.Option(False, "--full"),
 ) -> None:
     """Analyze a Compass RID, specializing datasets and applications when resolved."""
     if not resource_rid.startswith("ri."):
@@ -533,4 +776,24 @@ def resource(
             "resource must be a Compass-resolvable RID, not a Workshop name or variable",
             param_hint="RESOURCE_RID",
         )
-    _run(lambda service, context: service.resolve_resource(context, resource_rid), ontology_rid=None, profile=profile, branch=branch, format_type=format, output=output, graph_output=graph_output, change=change, direction=direction, depth=depth, max_nodes=max_nodes, max_requests=max_requests, max_pages=max_pages, max_items=max_items, time_budget_seconds=time_budget_seconds, full=full, change_type=change_type, output_mode=output_mode, compare_artifact=compare_artifact)
+    _run(
+        lambda service, context: service.resolve_resource(context, resource_rid),
+        ontology_rid=None,
+        profile=profile,
+        branch=branch,
+        format_type=format,
+        output=output,
+        graph_output=graph_output,
+        change=change,
+        direction=direction,
+        depth=depth,
+        max_nodes=max_nodes,
+        max_requests=max_requests,
+        max_pages=max_pages,
+        max_items=max_items,
+        time_budget_seconds=time_budget_seconds,
+        full=full,
+        change_type=change_type,
+        output_mode=output_mode,
+        compare_artifact=compare_artifact,
+    )
