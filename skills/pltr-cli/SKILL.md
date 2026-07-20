@@ -1,6 +1,12 @@
 ---
 name: pltr-cli
-description: Helps you work with Palantir Foundry using the pltr CLI. Use this when you need to query datasets, manage orchestration builds, work with ontologies, run SQL queries, manage folders/spaces/projects, copy datasets, or perform admin operations in Foundry. Triggers: Foundry, pltr, dataset, SQL query, ontology, build, schedule, RID.
+description: >-
+  Use the pltr CLI to work with Palantir Foundry, including mandatory read-only
+  dependency and change-impact assessment before modifying ontology resources,
+  actions, queries, datasets, or applications. Also covers SQL, orchestration,
+  folders, projects, permissions, and administration. Triggers include Foundry,
+  pltr, dependency, impact, downstream, upstream, ontology change, action, query,
+  dataset, application, build, schedule, and RID.
 ---
 
 # pltr-cli: Palantir Foundry CLI
@@ -9,10 +15,10 @@ This skill helps you use the pltr-cli to interact with Palantir Foundry effectiv
 
 ## Compatibility
 
-- **Skill version**: 1.1.0
-- **pltr-cli version**: 0.12.0+
-- **Python**: 3.9, 3.10, 3.11, 3.12
-- **Dependencies**: foundry-platform-sdk >= 1.69.0
+- **Skill version**: 1.2.0
+- **pltr-cli version**: 0.16.0+
+- **Python**: 3.10+
+- **Dependencies**: foundry-platform-sdk >=1.95.0,<2.0.0
 
 ## Overview
 
@@ -30,6 +36,7 @@ pltr-cli is a comprehensive CLI with 100+ commands for:
 - **Functions**: Execute queries and inspect value types
 - **AIP Agents**: Manage AI agents, sessions, and versions
 - **Models**: ML model registry for model and version management
+- **Dependency analysis**: Evidence-backed dependency paths, coverage gaps, provenance, and complete local graph artifacts
 
 ## Critical Concepts
 
@@ -93,6 +100,7 @@ Load these files based on the user's task:
 | Functions queries, value types | `reference/functions-commands.md` |
 | AIP Agents, sessions, versions | `reference/aip-agents-commands.md` |
 | ML model registry, model versions | `reference/models-commands.md` |
+| Dependency and change-impact analysis | `reference/dependency-commands.md` |
 
 ## Workflow Files
 
@@ -103,6 +111,7 @@ For common multi-step tasks:
 | Data exploration, SQL analysis, ontology queries | `workflows/data-analysis.md` |
 | ETL pipelines, scheduled jobs, data quality | `workflows/data-pipeline.md` |
 | Setting up permissions, resource roles, access control | `workflows/permission-management.md` |
+| Pre-change Foundry dependency and impact gate | `workflows/change-impact-assessment.md` |
 
 ## Common Commands Quick Reference
 
@@ -118,6 +127,13 @@ pltr sql execute "SELECT * FROM my_table LIMIT 10"
 
 # Get dataset info
 pltr dataset get ri.foundry.main.dataset.abc123
+
+# Assess an intended change and retain its complete evidence graph
+pltr dependency resource ri.foundry.main.dataset.abc123 \
+    --change "rename a column" \
+    --change-type rename \
+    --output-mode agent \
+    --graph-output ./change-impact-before.json
 
 # List files in dataset
 pltr dataset files list ri.foundry.main.dataset.abc123
@@ -173,11 +189,12 @@ pltr models version list ri.foundry.main.model.abc123
 
 ## Best Practices
 
-1. **Always verify authentication first**: Run `pltr verify` before starting work
-2. **Use appropriate output format**: JSON for programmatic use, CSV for spreadsheets, table for readability
-3. **Use async for large queries**: `pltr sql submit` + `pltr sql wait` for long-running queries
-4. **Export results**: Use `--output` to save results for further analysis
-5. **Use shell mode for exploration**: `pltr shell` provides tab completion and history
+1. **Verify authentication first**: Run `pltr verify` before starting work.
+2. **Assess before changing Foundry**: Load `workflows/change-impact-assessment.md`, retain a baseline artifact, and resolve `must_verify_before_merge`.
+3. **Preserve uncertainty**: Partial, unsupported, inaccessible, unresolved, and budget-exhausted coverage are not proof of no impact.
+4. **Use appropriate output mode**: `agent` for compact reasoning, `ci` for pipeline gating, and `graph` for full programmatic detail.
+5. **Use async for large queries**: `pltr sql submit` + `pltr sql wait` for long-running queries.
+6. **Use shell mode for exploration**: `pltr shell` provides tab completion and history.
 
 ## Getting Help
 
