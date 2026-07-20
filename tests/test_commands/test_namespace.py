@@ -15,8 +15,9 @@ def test_namespace_list_uses_agent_envelope() -> None:
         data=[{"rid": "ri.compass.main.space.1", "type": "namespace"}],
         metadata=PaginationMetadata(next_page_token="next", has_more=True),
     )
-    with patch("pltr.commands.namespace.CompassService") as service_class, patch(
-        "pltr.commands.namespace.agent_mode_enabled", return_value=True
+    with (
+        patch("pltr.commands.namespace.CompassService") as service_class,
+        patch("pltr.commands.namespace.agent_mode_enabled", return_value=True),
     ):
         service_class.return_value.list_namespaces.return_value = page
 

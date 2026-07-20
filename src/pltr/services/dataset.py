@@ -564,7 +564,10 @@ class DatasetService(BaseService):
 
         try:
             while True:
-                params: Dict[str, Any] = {"dataset_rid": dataset_rid, "branch_name": branch}
+                params: Dict[str, Any] = {
+                    "dataset_rid": dataset_rid,
+                    "branch_name": branch,
+                }
                 if page_size is not None:
                     params["page_size"] = page_size
                 if current_token is not None:
@@ -574,21 +577,16 @@ class DatasetService(BaseService):
                 files.extend(page_items)
                 pages_fetched += 1
 
-                if (
-                    next_file_token is None
-                    or (
-                        effective_max_pages is not None
-                        and pages_fetched >= effective_max_pages
-                    )
+                if next_file_token is None or (
+                    effective_max_pages is not None
+                    and pages_fetched >= effective_max_pages
                 ):
                     break
                 current_token = next_file_token
 
             total_size = sum(
                 int(size)
-                for size in (
-                    getattr(file, "size_bytes", None) for file in files
-                )
+                for size in (getattr(file, "size_bytes", None) for file in files)
                 if isinstance(size, (int, float)) and size >= 0
             )
             hidden_files = [
@@ -601,9 +599,7 @@ class DatasetService(BaseService):
             transaction_next_token: Optional[str] = None
             transaction_warning: Optional[str] = None
             try:
-                transaction_iterator = self.service.Dataset.transactions(
-                    dataset_rid
-                )
+                transaction_iterator = self.service.Dataset.transactions(dataset_rid)
                 transactions, transaction_next_token = self._read_sdk_page(
                     transaction_iterator
                 )

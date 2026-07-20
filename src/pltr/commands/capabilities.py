@@ -30,7 +30,13 @@ def _render_table(manifest: Mapping[str, Any]) -> str:
     for capability in capabilities:
         group = groups.setdefault(
             capability["group"],
-            {"total": 0, "planned": 0, "implemented": 0, "blocked": 0, "unsupported": 0},
+            {
+                "total": 0,
+                "planned": 0,
+                "implemented": 0,
+                "blocked": 0,
+                "unsupported": 0,
+            },
         )
         group["total"] += 1
         group[capability["status"]] += 1

@@ -17,7 +17,9 @@ formatter = OutputFormatter()
 @app.command("graph")
 def get_resource_graph(
     resource_rid: str = typer.Argument(
-        ..., help="Resource RID at which graph traversal starts", autocompletion=complete_rid
+        ...,
+        help="Resource RID at which graph traversal starts",
+        autocompletion=complete_rid,
     ),
     direction: str = typer.Option(
         "both", "--direction", help="Traversal direction: upstream, downstream, or both"

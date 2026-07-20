@@ -110,9 +110,7 @@ class CompassService(BaseService):
                 getattr(space, "deletion_policy_organizations", None) or []
             ),
             "default_role_set_id": getattr(space, "default_role_set_id", None),
-            "space_maven_identifier": getattr(
-                space, "space_maven_identifier", None
-            ),
+            "space_maven_identifier": getattr(space, "space_maven_identifier", None),
             "type": "namespace",
             "source_type": "space",
         }

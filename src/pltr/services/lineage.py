@@ -88,9 +88,7 @@ class LineageService(BaseService):
                         source_rid=current_rid,
                         target_rid=str(parent_rid),
                         relation="parent",
-                        target_resource=self._safe_get_resource(
-                            str(parent_rid), gaps
-                        ),
+                        target_resource=self._safe_get_resource(str(parent_rid), gaps),
                         max_nodes=max_nodes,
                         max_edges=max_edges,
                         gaps=gaps,
@@ -121,7 +119,9 @@ class LineageService(BaseService):
                     for child in children:
                         child_rid = self._value(child, "rid")
                         if not child_rid:
-                            gaps.add(f"A child of {current_rid} had no RID and was skipped.")
+                            gaps.add(
+                                f"A child of {current_rid} had no RID and was skipped."
+                            )
                             continue
                         child_rid = str(child_rid)
                         self._add_relationship(
@@ -146,7 +146,9 @@ class LineageService(BaseService):
 
             if current_type == "project" and direction in {"upstream", "both"}:
                 try:
-                    reference_iterator = self.service.Project.Reference.list(current_rid)
+                    reference_iterator = self.service.Project.Reference.list(
+                        current_rid
+                    )
                     references, reference_next_token = self._read_sdk_page(
                         reference_iterator
                     )
@@ -185,14 +187,8 @@ class LineageService(BaseService):
                     )
 
         all_edges = sorted(edges.values(), key=lambda edge: edge["id"])
-        remaining_edges = [
-            edge for edge in all_edges if edge["id"] > after_edge_id
-        ]
-        page = (
-            remaining_edges
-            if page_size is None
-            else remaining_edges[:page_size]
-        )
+        remaining_edges = [edge for edge in all_edges if edge["id"] > after_edge_id]
+        page = remaining_edges if page_size is None else remaining_edges[:page_size]
         last_edge_id = page[-1]["id"] if page else ""
         next_token = (
             f"resource-graph-after:{last_edge_id}"
@@ -278,14 +274,15 @@ class LineageService(BaseService):
         }
 
     def _safe_get_resource(self, rid: str, gaps: Set[str]) -> Optional[Any]:
-        if rid.startswith("ri.compass.main.space.") or rid == "ri.compass.main.folder.0":
+        if (
+            rid.startswith("ri.compass.main.space.")
+            or rid == "ri.compass.main.folder.0"
+        ):
             return None
         try:
             return self.service.Resource.get(rid)
         except Exception as e:
-            gaps.add(
-                f"Resource {rid} was inaccessible: {self._format_error_detail(e)}"
-            )
+            gaps.add(f"Resource {rid} was inaccessible: {self._format_error_detail(e)}")
             return None
 
     @staticmethod

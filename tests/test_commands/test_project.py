@@ -46,8 +46,9 @@ def test_project_imports_forwards_pagination() -> None:
 
 
 def test_project_search_agent_output_is_enveloped() -> None:
-    with patch("pltr.commands.project.ProjectService") as service_class, patch(
-        "pltr.commands.project.agent_mode_enabled", return_value=True
+    with (
+        patch("pltr.commands.project.ProjectService") as service_class,
+        patch("pltr.commands.project.agent_mode_enabled", return_value=True),
     ):
         service = Mock()
         service.search_projects.return_value = _page()

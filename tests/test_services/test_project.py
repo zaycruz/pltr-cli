@@ -572,7 +572,9 @@ class TestProjectService:
         assert result["display_name"] == "My Organization"
         assert result["description"] == "Organization description"
 
-    def test_get_project_imports_reads_reference_page(self, project_service, mock_client):
+    def test_get_project_imports_reads_reference_page(
+        self, project_service, mock_client
+    ):
         reference = Mock()
         reference.resource_rid = "ri.foundry.main.dataset.imported"
         reference.name = "Imported dataset"

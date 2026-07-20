@@ -17,8 +17,9 @@ def test_lineage_graph_agent_output_contains_coverage() -> None:
         "coverage": {"gaps": ["incomplete"]},
         "pagination": {"has_more": False},
     }
-    with patch("pltr.commands.lineage.LineageService") as service_class, patch(
-        "pltr.commands.lineage.agent_mode_enabled", return_value=True
+    with (
+        patch("pltr.commands.lineage.LineageService") as service_class,
+        patch("pltr.commands.lineage.agent_mode_enabled", return_value=True),
     ):
         service_class.return_value.get_resource_graph.return_value = graph
 

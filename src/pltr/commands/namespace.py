@@ -34,9 +34,7 @@ def _emit_result(
         return
 
     if format == "json":
-        formatter.format_dict(
-            {"data": data, "pagination": pagination}, format, output
-        )
+        formatter.format_dict({"data": data, "pagination": pagination}, format, output)
     else:
         formatter.format_list(data, format, output)
 

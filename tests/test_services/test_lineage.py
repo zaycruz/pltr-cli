@@ -37,9 +37,7 @@ def test_graph_has_stable_node_and_edge_ids_and_explicit_coverage() -> None:
     client.filesystem.Resource.get.return_value = root
     client.filesystem.Folder.children.return_value = [child]
 
-    result = service.get_resource_graph(
-        "ri.compass.main.folder.root", max_depth=1
-    )
+    result = service.get_resource_graph("ri.compass.main.folder.root", max_depth=1)
 
     assert [node["id"] for node in result["nodes"]] == sorted(
         node["id"] for node in result["nodes"]
@@ -63,9 +61,7 @@ def test_graph_paginates_edges_with_bounded_output() -> None:
     client.filesystem.Resource.get.return_value = root
     client.filesystem.Folder.children.return_value = [child_one, child_two]
 
-    first = service.get_resource_graph(
-        root.rid, max_depth=1, page_size=1
-    )
+    first = service.get_resource_graph(root.rid, max_depth=1, page_size=1)
     second = service.get_resource_graph(
         root.rid,
         max_depth=1,

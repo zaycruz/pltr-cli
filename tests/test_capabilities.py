@@ -25,9 +25,7 @@ def test_baseline_contains_all_tools_and_workflows() -> None:
 
 
 def test_duplicate_capability_ids_are_rejected() -> None:
-    duplicate = replace(
-        CAPABILITIES[1], capability_id=CAPABILITIES[0].capability_id
-    )
+    duplicate = replace(CAPABILITIES[1], capability_id=CAPABILITIES[0].capability_id)
 
     with pytest.raises(ManifestValidationError, match="duplicate capability ids"):
         validate_capabilities((CAPABILITIES[0], duplicate, *CAPABILITIES[2:]))
@@ -72,6 +70,7 @@ def test_blocked_capability_can_be_recorded_with_a_reason() -> None:
 
     validate_capabilities((blocked, *CAPABILITIES[1:]))
     manifest = capability_manifest((blocked, *CAPABILITIES[1:]))
-    assert manifest["counts"]["blocked"] == sum(
-        entry.status == "blocked" for entry in CAPABILITIES
-    ) + 1
+    assert (
+        manifest["counts"]["blocked"]
+        == sum(entry.status == "blocked" for entry in CAPABILITIES) + 1
+    )

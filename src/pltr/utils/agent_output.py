@@ -41,9 +41,7 @@ def configure_agent_settings(
     *, enabled: bool = False, non_interactive: bool = False
 ) -> None:
     """Set agent execution settings for the current CLI invocation."""
-    _settings.set(
-        AgentSettings(enabled=enabled, non_interactive=non_interactive)
-    )
+    _settings.set(AgentSettings(enabled=enabled, non_interactive=non_interactive))
 
 
 def agent_mode_enabled() -> bool:
