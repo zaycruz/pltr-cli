@@ -459,14 +459,13 @@ def test_nonexistent_filesystem_equivalent_alias_is_rechecked_after_artifact_wri
     output = tmp_path / "graph.json"
 
     def filesystem_equivalent_after_creation(first, second):
-        assert {Path(first).name.casefold(), Path(second).name.casefold()} == {
-            "graph.json"
-        }
+        assert Path(first).name == "graph.json"
+        assert Path(second).name == "Graph.json"
         return graph.exists()
 
     with (
         patch(
-            "pltr.commands.dependency.os.path.samefile",
+            "pltr.commands.dependency._paths_alias",
             side_effect=filesystem_equivalent_after_creation,
         ),
         patch.object(

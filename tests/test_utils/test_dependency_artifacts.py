@@ -131,7 +131,8 @@ def test_write_is_atomic_complete_and_mode_0600(tmp_path):
     temporary, final = replace.call_args.args
     assert Path(temporary).parent == destination.parent
     assert Path(final) == destination
-    assert oct(destination.stat().st_mode & 0o777) == "0o600"
+    if os.name != "nt":
+        assert oct(destination.stat().st_mode & 0o777) == "0o600"
     document = json.loads(destination.read_text())
     expected = result_fixture()
     assert {
