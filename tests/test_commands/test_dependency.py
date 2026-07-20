@@ -7,6 +7,7 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
+from click.utils import strip_ansi
 import pytest
 from typer.testing import CliRunner
 
@@ -688,9 +689,10 @@ def test_agent_options_are_closed_enums_before_service_construction(option, valu
             ],
         )
 
+    output = strip_ansi(result.output)
     assert result.exit_code == 2
-    assert f"Invalid value for '{option}'" in result.output
-    assert value in result.output
+    assert f"Invalid value for '{option}'" in output
+    assert value in output
     run.assert_not_called()
     constructor.assert_not_called()
 
@@ -1102,7 +1104,7 @@ def test_compare_artifact_error_raises_bad_parameter_outside_ci_mode(tmp_path, s
     )
 
     assert result.exit_code == 2
-    assert "Invalid value for --compare-artifact" in result.output
+    assert "Invalid value for --compare-artifact" in strip_ansi(result.output)
     constructor.assert_not_called()
     assert not (tmp_path / "graph.json").exists()
 
