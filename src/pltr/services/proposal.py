@@ -115,7 +115,7 @@ MCP_VERIFIED_CAPABILITIES = frozenset(
 
 # The pinned SDK's FoundryClient has no namespace for either proposal system.
 # Consequently none of the catalog operations is callable by this CLI today.
-SDK_REACHABLE_CAPABILITIES = frozenset()
+SDK_REACHABLE_CAPABILITIES: frozenset[tuple[ProposalType, ProposalAction]] = frozenset()
 
 
 def parse_proposal_type(value: str) -> ProposalType:
