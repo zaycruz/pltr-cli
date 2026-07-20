@@ -6,7 +6,6 @@ import typer
 
 from ..services.proposal import (
     ProposalAction,
-    ProposalError,
     ProposalService,
     ProposalType,
     ProposalValidationError,
@@ -30,9 +29,7 @@ def _fail(error: Exception, output_format: str) -> None:
     if output_format == "json":
         _emit(proposal_error.to_payload(), "json")
     else:
-        formatter.print_error(
-            f"{proposal_error.category}: {proposal_error}"
-        )
+        formatter.print_error(f"{proposal_error.category}: {proposal_error}")
     raise typer.Exit(proposal_error.exit_code)
 
 
@@ -70,11 +67,19 @@ def _format_option() -> Any:
 @app.command("create")
 def create_proposal(
     proposal_type: str = typer.Argument(..., help="code-pr or global-proposal"),
-    parent_rid: str = typer.Option(..., "--parent-rid", help="Repository or ontology RID"),
+    parent_rid: str = typer.Option(
+        ..., "--parent-rid", help="Repository or ontology RID"
+    ),
     title: str = typer.Option(..., "--title", help="Proposal title"),
-    source_ref: str = typer.Option(..., "--source-ref", help="Source branch or Global Branch RID"),
-    target_ref: Optional[str] = typer.Option(None, "--target-ref", help="Target branch for code-pr"),
-    description: Optional[str] = typer.Option(None, "--description", help="Proposal description"),
+    source_ref: str = typer.Option(
+        ..., "--source-ref", help="Source branch or Global Branch RID"
+    ),
+    target_ref: Optional[str] = typer.Option(
+        None, "--target-ref", help="Target branch for code-pr"
+    ),
+    description: Optional[str] = typer.Option(
+        None, "--description", help="Proposal description"
+    ),
     profile: Optional[str] = _profile_option(),
     format: str = _format_option(),
 ) -> None:
@@ -116,7 +121,9 @@ def list_proposals(
 def get_proposal(
     proposal_type: str = typer.Argument(..., help="code-pr or global-proposal"),
     proposal_id: str = typer.Argument(..., help="Proposal identifier"),
-    parent_rid: Optional[str] = typer.Option(None, "--parent-rid", help="Repository or ontology RID"),
+    parent_rid: Optional[str] = typer.Option(
+        None, "--parent-rid", help="Repository or ontology RID"
+    ),
     profile: Optional[str] = _profile_option(),
     format: str = _format_option(),
 ) -> None:
@@ -126,9 +133,7 @@ def get_proposal(
         proposal_type,
         profile,
         format,
-        lambda service, kind: service.get(
-            kind, proposal_id, parent_rid=parent_rid
-        ),
+        lambda service, kind: service.get(kind, proposal_id, parent_rid=parent_rid),
     )
 
 
@@ -137,7 +142,9 @@ def comment_on_proposal(
     proposal_type: str = typer.Argument(..., help="code-pr or global-proposal"),
     proposal_id: str = typer.Argument(..., help="Proposal identifier"),
     message: str = typer.Argument(..., help="Comment text"),
-    parent_rid: Optional[str] = typer.Option(None, "--parent-rid", help="Repository or ontology RID"),
+    parent_rid: Optional[str] = typer.Option(
+        None, "--parent-rid", help="Repository or ontology RID"
+    ),
     profile: Optional[str] = _profile_option(),
     format: str = _format_option(),
 ) -> None:
@@ -184,7 +191,15 @@ def approve_proposal(
 ) -> None:
     """Record approval, or return unsupported-capability."""
 
-    _decision_command(ProposalAction.APPROVE, proposal_type, proposal_id, parent_rid, message, profile, format)
+    _decision_command(
+        ProposalAction.APPROVE,
+        proposal_type,
+        proposal_id,
+        parent_rid,
+        message,
+        profile,
+        format,
+    )
 
 
 @app.command("request-changes")
@@ -198,7 +213,15 @@ def request_proposal_changes(
 ) -> None:
     """Request changes, or return unsupported-capability."""
 
-    _decision_command(ProposalAction.REQUEST_CHANGES, proposal_type, proposal_id, parent_rid, message, profile, format)
+    _decision_command(
+        ProposalAction.REQUEST_CHANGES,
+        proposal_type,
+        proposal_id,
+        parent_rid,
+        message,
+        profile,
+        format,
+    )
 
 
 def _unsupported_terminal_command(
@@ -224,13 +247,17 @@ def merge_proposal(
     proposal_type: str = typer.Argument(..., help="code-pr or global-proposal"),
     proposal_id: str = typer.Argument(..., help="Proposal identifier"),
     parent_rid: Optional[str] = typer.Option(None, "--parent-rid"),
-    yes: bool = typer.Option(False, "--yes", help="Skip confirmation if this action becomes supported"),
+    yes: bool = typer.Option(
+        False, "--yes", help="Skip confirmation if this action becomes supported"
+    ),
     profile: Optional[str] = _profile_option(),
     format: str = _format_option(),
 ) -> None:
     """Merge a code PR, or return unsupported-capability."""
 
-    _unsupported_terminal_command(ProposalAction.MERGE, proposal_type, proposal_id, parent_rid, profile, format)
+    _unsupported_terminal_command(
+        ProposalAction.MERGE, proposal_type, proposal_id, parent_rid, profile, format
+    )
 
 
 @app.command("accept")
@@ -238,13 +265,17 @@ def accept_proposal(
     proposal_type: str = typer.Argument(..., help="code-pr or global-proposal"),
     proposal_id: str = typer.Argument(..., help="Proposal identifier"),
     parent_rid: Optional[str] = typer.Option(None, "--parent-rid"),
-    yes: bool = typer.Option(False, "--yes", help="Skip confirmation if this action becomes supported"),
+    yes: bool = typer.Option(
+        False, "--yes", help="Skip confirmation if this action becomes supported"
+    ),
     profile: Optional[str] = _profile_option(),
     format: str = _format_option(),
 ) -> None:
     """Accept a Global Proposal, or return unsupported-capability."""
 
-    _unsupported_terminal_command(ProposalAction.ACCEPT, proposal_type, proposal_id, parent_rid, profile, format)
+    _unsupported_terminal_command(
+        ProposalAction.ACCEPT, proposal_type, proposal_id, parent_rid, profile, format
+    )
 
 
 @app.command("close")
@@ -270,9 +301,7 @@ def close_proposal(
         current = service.get(kind, proposal_id, parent_rid=parent_rid)
         if not yes:
             target = current.get("title") or current.get("id") or proposal_id
-            if not typer.confirm(
-                f"Close {kind.value} '{target}' ({proposal_id})?"
-            ):
+            if not typer.confirm(f"Close {kind.value} '{target}' ({proposal_id})?"):
                 raise ProposalValidationError("Close cancelled")
 
         result = service.close(kind, proposal_id, parent_rid=parent_rid)

@@ -1,5 +1,5 @@
 import json
-from unittest.mock import Mock, call, patch
+from unittest.mock import call, patch
 
 import pytest
 import typer
@@ -66,9 +66,21 @@ def test_create_routes_explicit_type_payload_and_profile(proposal_service):
 @pytest.mark.parametrize(
     ("arguments", "method_name", "expected_call"),
     [
-        (["list", "code-pr", "repo"], "list", call(ProposalType.CODE_PR, parent_rid="repo")),
-        (["get", "global-proposal", "gp-1", "--parent-rid", "ontology"], "get", call(ProposalType.GLOBAL_PROPOSAL, "gp-1", parent_rid="ontology")),
-        (["comment", "code-pr", "12", "Looks good", "--parent-rid", "repo"], "comment", call(ProposalType.CODE_PR, "12", "Looks good", parent_rid="repo")),
+        (
+            ["list", "code-pr", "repo"],
+            "list",
+            call(ProposalType.CODE_PR, parent_rid="repo"),
+        ),
+        (
+            ["get", "global-proposal", "gp-1", "--parent-rid", "ontology"],
+            "get",
+            call(ProposalType.GLOBAL_PROPOSAL, "gp-1", parent_rid="ontology"),
+        ),
+        (
+            ["comment", "code-pr", "12", "Looks good", "--parent-rid", "repo"],
+            "comment",
+            call(ProposalType.CODE_PR, "12", "Looks good", parent_rid="repo"),
+        ),
     ],
 )
 def test_safe_commands_route_supported_service_results_as_json(
@@ -180,9 +192,16 @@ def test_close_refreshes_then_prompts_and_decline_prevents_write(proposal_servic
 def test_close_yes_refreshes_before_write_and_forwards_profile(proposal_service):
     service, service_class = proposal_service
     calls = []
-    service.require_capability.side_effect = lambda *args, **kwargs: calls.append("capability")
-    service.get.side_effect = lambda *args, **kwargs: calls.append("get") or {"id": "gp-1"}
-    service.close.side_effect = lambda *args, **kwargs: calls.append("close") or {"id": "gp-1", "state": "CLOSED"}
+    service.require_capability.side_effect = lambda *args, **kwargs: calls.append(
+        "capability"
+    )
+    service.get.side_effect = lambda *args, **kwargs: calls.append("get") or {
+        "id": "gp-1"
+    }
+    service.close.side_effect = lambda *args, **kwargs: calls.append("close") or {
+        "id": "gp-1",
+        "state": "CLOSED",
+    }
 
     result = runner.invoke(
         app,
