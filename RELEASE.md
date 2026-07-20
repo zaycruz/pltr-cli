@@ -14,7 +14,7 @@ The CLI's native `--agent` output is the supported interface for autonomous agen
 
 Removal of `pltr mcp` is a breaking change and must be called out in release notes with native command replacements.
 
-## Current unreleased notes
+## Release notes for v0.18.0
 
 This release advances the native agent-first Foundry interface with:
 
