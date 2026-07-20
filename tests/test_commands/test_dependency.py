@@ -1,9 +1,11 @@
+import copy
 import csv
 import hashlib
 import json
+import os
 from io import StringIO
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from typer.testing import CliRunner
@@ -25,6 +27,13 @@ runner = CliRunner()
 
 def independent_payload_digest(document):
     payload = {key: value for key, value in document.items() if key != "artifact"}
+    agent = payload.get("agent")
+    if isinstance(agent, dict):
+        payload["agent"] = {
+            key: value
+            for key, value in agent.items()
+            if key != "artifact_reference"
+        }
     canonical = json.dumps(
         payload,
         ensure_ascii=False,
@@ -98,7 +107,99 @@ def analysis_result():
         ],
         "budget": {"used": {"requests": 2}, "limits": {"requests": 200}},
         "summary": {"assessment": "Partial dependency coverage."},
+        "agent": {
+            "schema_version": "dependency-agent-v1",
+            "status": "clean",
+            "summary": "One observed relationship; no merge-blocking verification.",
+            "change": {
+                "text": None,
+                "change_type": None,
+                "change_type_source": "absent",
+            },
+            "blast_radius": {
+                "score": 3,
+                "weight_table_version": "blast-radius-weights-v1",
+                "budget_fingerprint": "budget-1",
+                "groups": {
+                    "critical_paths": [],
+                    "structural_dependents": [],
+                    "indirect_operational_effects": ["impact-1"],
+                    "unknown_manual_verification": [],
+                },
+            },
+            "release_risk": {
+                "score": None,
+                "weight_table_version": "release-risk-weights-v1",
+                "budget_fingerprint": "budget-1",
+                "change_type_source": "absent",
+            },
+            "verification": {
+                "must_verify_before_merge": [],
+                "should_verify_before_deploy": [
+                    {
+                        "subject_node_id": "query:q",
+                        "subject_display_name": "Query q",
+                        "related_impact_ids": ["impact-1"],
+                        "reason": "impact",
+                        "message": "Verify the query relationship.",
+                    }
+                ],
+                "unsupported_manual_surfaces": [],
+            },
+            "coverage_completeness": {
+                "complete": True,
+                "budget_exhausted": False,
+                "exhausted_dimensions": [],
+                "truncated_surfaces": [],
+            },
+            "action_query_contracts": {"actions": [], "queries": []},
+            "diff": None,
+        },
     }
+
+
+def _valid_comparison_baseline() -> dict:
+    """Minimal writer-shaped baseline: the smallest document
+    `write_dependency_artifact` can ever produce."""
+    return {
+        "graph": {
+            "nodes": [{"id": "node-a", "kind": "object-type"}],
+            "edges": [{"id": "edge-a", "source": "node-a", "target": "node-b"}],
+        },
+        "target": {
+            "kind": "object-type",
+            "identifiers": {"object_type": "Employee"},
+            "display_name": "Employee",
+            "node_id": "node-a",
+        },
+        "read_contexts": [
+            {"id": "ctx", "profile": "qa", "host_fingerprint": "f9137f6af01050c3"}
+        ],
+        "budget": {"used": {"requests": 1}, "limits": {"requests": 200}},
+        "artifact": {
+            "analysis_id": "dep-baseline",
+            "sha256": "a" * 64,
+            "path": "/tmp/dep-baseline.json",
+        },
+    }
+
+
+def _drop(payload: dict, *path: str) -> dict:
+    mutated = copy.deepcopy(payload)
+    target = mutated
+    for key in path[:-1]:
+        target = target[key]
+    del target[path[-1]]
+    return mutated
+
+
+def _set(payload: dict, value, *path: str) -> dict:
+    mutated = copy.deepcopy(payload)
+    target = mutated
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = value
+    return mutated
 
 
 @pytest.fixture
@@ -180,7 +281,12 @@ def test_each_command_resolves_and_analyzes_once(
     assert budget.time_budget_seconds == 90
     getattr(instance, resolver).assert_called_once_with(context, *resolver_arguments)
     instance.analyze.assert_called_once_with(
-        target, context, direction="downstream", change="rename field"
+        target,
+        context,
+        direction="downstream",
+        change="rename field",
+        change_type=None,
+        compare_artifact=None,
     )
     assert graph_path.exists()
 
@@ -214,9 +320,20 @@ def test_output_does_not_replace_graph_output_or_repeat_analysis(tmp_path, servi
     rendered_document = json.loads(rendered.read_text())
     artifact_document = json.loads(graph.read_text())
     assert rendered_document == artifact_document
+    retained = {
+        key: value
+        for key, value in artifact_document.items()
+        if key not in {"agent", "artifact"}
+    }
+    expected = analysis_result()
+    assert retained == {
+        key: value for key, value in expected.items() if key != "agent"
+    }
     assert {
-        key: value for key, value in artifact_document.items() if key != "artifact"
-    } == analysis_result()
+        key: value
+        for key, value in artifact_document["agent"].items()
+        if key != "artifact_reference"
+    } == expected["agent"]
     artifact = artifact_document["artifact"]
     expected_digest = independent_payload_digest(artifact_document)
     assert artifact["path"] == str(graph.resolve())
@@ -400,6 +517,7 @@ def test_csv_has_every_explicit_row_kind(tmp_path, service):
     assert result.exit_code == 0, result.output
     kinds = {row["row_kind"] for row in csv.DictReader(StringIO(rendered.read_text()))}
     assert kinds == {
+        "agent",
         "artifact",
         "read-context",
         "node",
@@ -422,6 +540,521 @@ def test_csv_has_every_explicit_row_kind(tmp_path, service):
     assert read_context_row["id"] == "ctx"
     assert read_context["profile"] == "qa"
     assert read_context["host_fingerprint"] == "f9137f6af01050c3"
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["object-type", "ri.ontology", "Employee"],
+        ["property", "ri.ontology", "Employee", "email"],
+        ["link-type", "ri.ontology", "Employee", "manager"],
+        ["action-type", "ri.ontology", "promote"],
+        ["query-type", "ri.ontology", "findEmployee"],
+        ["resource", "ri.foundry.main.dataset.abc"],
+    ],
+)
+def test_all_commands_accept_agent_options_and_project_comparison_artifact(
+    tmp_path, service, arguments
+):
+    _, instance, _, target = service
+    baseline = tmp_path / "baseline.json"
+    baseline_payload = _valid_comparison_baseline()
+    baseline.write_text(json.dumps(baseline_payload))
+
+    result = runner.invoke(
+        app,
+        [
+            "dependency",
+            *arguments,
+            "--change-type",
+            "rename",
+            "--compare-artifact",
+            str(baseline),
+            "--output-mode",
+            "agent",
+            "--graph-output",
+            str(tmp_path / "graph.json"),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Dependency impact assessment [dependency-agent-v1]" in result.output
+    assert instance.analyze.call_args.args[0] is target
+    assert instance.analyze.call_args.kwargs["change_type"] == "rename"
+    assert instance.analyze.call_args.kwargs["compare_artifact"] == baseline_payload
+
+
+@pytest.mark.parametrize(
+    ("option", "value"),
+    [
+        ("--change-type", "breaking"),
+        ("--output-mode", "human"),
+    ],
+)
+def test_agent_options_are_closed_enums_before_service_construction(option, value):
+    with (
+        patch("pltr.commands.dependency._run") as run,
+        patch("pltr.commands.dependency.DependencyGraphService") as constructor,
+    ):
+        result = runner.invoke(
+            app,
+            [
+                "dependency",
+                "resource",
+                "ri.foundry.main.dataset.abc",
+                option,
+                value,
+            ],
+        )
+
+    assert result.exit_code == 2
+    assert f"Invalid value for '{option}'" in result.output
+    assert value in result.output
+    run.assert_not_called()
+    constructor.assert_not_called()
+
+
+def test_graph_json_and_csv_modes_retain_full_agent_contract(tmp_path, service):
+    graph_result = runner.invoke(
+        app,
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--graph-output",
+            str(tmp_path / "graph-table.json"),
+        ],
+    )
+    assert graph_result.exit_code == 0, graph_result.output
+    assert "Agent verification: must=0 should=1 unsupported=0" in graph_result.output
+    assert "Agent blast radius: critical=0 structural=0 indirect=1 unknown=0" in graph_result.output
+
+    json_result = runner.invoke(
+        app,
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--output-mode",
+            "agent",
+            "--format",
+            "json",
+            "--graph-output",
+            str(tmp_path / "graph-json.json"),
+        ],
+    )
+    assert json_result.exit_code == 0, json_result.output
+    assert json.loads(json_result.output)["agent"]["schema_version"] == (
+        "dependency-agent-v1"
+    )
+
+    csv_result = runner.invoke(
+        app,
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--output-mode",
+            "agent",
+            "--format",
+            "csv",
+            "--graph-output",
+            str(tmp_path / "graph-csv.json"),
+        ],
+    )
+    assert csv_result.exit_code == 0, csv_result.output
+    agent_row = next(
+        row
+        for row in csv.DictReader(StringIO(csv_result.output))
+        if row["row_kind"] == "agent"
+    )
+    assert json.loads(agent_row["record"])["schema_version"] == "dependency-agent-v1"
+
+
+@pytest.mark.parametrize(
+    ("status", "must_verify", "expected_exit"),
+    [("clean", [], 0), ("needs-verification", [{"reason": "coverage-gap"}], 2)],
+)
+def test_ci_mode_uses_zero_or_two_without_reusing_fatal_exit_one(
+    tmp_path, service, status, must_verify, expected_exit
+):
+    _, instance, _, _ = service
+    payload = analysis_result()
+    payload["agent"]["status"] = status
+    payload["agent"]["verification"]["must_verify_before_merge"] = must_verify
+    instance.analyze.return_value = payload
+
+    result = runner.invoke(
+        app,
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--output-mode",
+            "ci",
+            "--graph-output",
+            str(tmp_path / "graph.json"),
+        ],
+    )
+
+    assert result.exit_code == expected_exit
+    summary = json.loads(result.output)
+    assert summary["status"] == status
+    assert summary["must_verify"] == len(must_verify)
+
+
+@pytest.mark.parametrize(
+    ("contents", "expected_message"),
+    [
+        (None, "cannot load comparison artifact"),
+        ("{not-json", "cannot load comparison artifact"),
+        ("[]", "must contain a JSON object"),
+    ],
+)
+def test_ci_comparison_artifact_errors_use_fatal_machine_exit_one(
+    tmp_path, service, contents, expected_message
+):
+    constructor, _, _, _ = service
+    baseline = tmp_path / "baseline.json"
+    if contents is not None:
+        baseline.write_text(contents)
+
+    result = runner.invoke(
+        app,
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--compare-artifact",
+            str(baseline),
+            "--output-mode",
+            "ci",
+            "--graph-output",
+            str(tmp_path / "graph.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload == {
+        "error_class": "invalid-invocation",
+        "message": payload["message"],
+        "retryable": False,
+    }
+    assert expected_message in payload["message"]
+    constructor.assert_not_called()
+    assert not (tmp_path / "graph.json").exists()
+
+
+@pytest.mark.skipif(
+    not hasattr(os, "mkfifo"), reason="mkfifo is unavailable on this platform"
+)
+def test_compare_artifact_rejects_non_regular_file_without_blocking(
+    tmp_path, service
+):
+    constructor, _, _, _ = service
+    baseline = tmp_path / "baseline.fifo"
+    os.mkfifo(baseline)
+
+    result = runner.invoke(
+        app,
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--compare-artifact",
+            str(baseline),
+            "--output-mode",
+            "ci",
+            "--graph-output",
+            str(tmp_path / "graph.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload["error_class"] == "invalid-invocation"
+    assert "must be a regular file" in payload["message"]
+    constructor.assert_not_called()
+
+
+@pytest.mark.skipif(
+    not hasattr(os, "O_NOFOLLOW"), reason="O_NOFOLLOW is unavailable on this platform"
+)
+def test_compare_artifact_does_not_follow_a_symlink(tmp_path, service):
+    constructor, _, _, _ = service
+    real = tmp_path / "real-baseline.json"
+    real.write_text(json.dumps({"artifact": {"analysis_id": "dep-baseline"}}))
+    link = tmp_path / "linked-baseline.json"
+    link.symlink_to(real)
+
+    result = runner.invoke(
+        app,
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--compare-artifact",
+            str(link),
+            "--output-mode",
+            "ci",
+            "--graph-output",
+            str(tmp_path / "graph.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload["error_class"] == "invalid-invocation"
+    assert "cannot load comparison artifact" in payload["message"]
+    constructor.assert_not_called()
+
+
+def test_compare_artifact_rejects_files_over_the_byte_limit(tmp_path, service):
+    constructor, _, _, _ = service
+    baseline = tmp_path / "oversized.json"
+    oversize = dependency_command.MAX_COMPARISON_ARTIFACT_BYTES + 1
+    with open(baseline, "wb") as handle:
+        handle.seek(oversize - 1)
+        handle.write(b"0")
+
+    result = runner.invoke(
+        app,
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--compare-artifact",
+            str(baseline),
+            "--output-mode",
+            "ci",
+            "--graph-output",
+            str(tmp_path / "graph.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert payload["error_class"] == "invalid-invocation"
+    assert "exceeds the" in payload["message"]
+    assert "byte limit" in payload["message"]
+    constructor.assert_not_called()
+
+
+_MALFORMED_BASELINE = _valid_comparison_baseline()
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected_fragment"),
+    [
+        ({}, "must have an object 'graph'"),
+        ({"artifact": {}}, "must have an object 'graph'"),
+        (_drop(_MALFORMED_BASELINE, "graph"), "must have an object 'graph'"),
+        (_set(_MALFORMED_BASELINE, "not-an-object", "graph"), "must have an object 'graph'"),
+        (
+            _drop(_MALFORMED_BASELINE, "graph", "nodes"),
+            "must have an array 'graph.nodes'",
+        ),
+        (
+            _set(_MALFORMED_BASELINE, "not-a-list", "graph", "nodes"),
+            "must have an array 'graph.nodes'",
+        ),
+        (
+            _set(_MALFORMED_BASELINE, [1, 2], "graph", "nodes"),
+            "'graph.nodes[0]' must be an object",
+        ),
+        (
+            _drop(_MALFORMED_BASELINE, "graph", "edges"),
+            "must have an array 'graph.edges'",
+        ),
+        (
+            _set(_MALFORMED_BASELINE, "not-a-list", "graph", "edges"),
+            "must have an array 'graph.edges'",
+        ),
+        (
+            _set(_MALFORMED_BASELINE, [{"id": "e"}, "bad"], "graph", "edges"),
+            "'graph.edges[1]' must be an object",
+        ),
+        (_drop(_MALFORMED_BASELINE, "target"), "must have an object 'target'"),
+        (
+            _set(_MALFORMED_BASELINE, "not-an-object", "target"),
+            "must have an object 'target'",
+        ),
+        (
+            _drop(_MALFORMED_BASELINE, "read_contexts"),
+            "must have an array 'read_contexts'",
+        ),
+        (
+            _set(_MALFORMED_BASELINE, "not-a-list", "read_contexts"),
+            "must have an array 'read_contexts'",
+        ),
+        (
+            _set(_MALFORMED_BASELINE, [], "read_contexts"),
+            "must have a non-empty array 'read_contexts'",
+        ),
+        (
+            _set(_MALFORMED_BASELINE, [1], "read_contexts"),
+            "'read_contexts[0]' must be an object",
+        ),
+        (_drop(_MALFORMED_BASELINE, "budget"), "must have an object 'budget'"),
+        (
+            _set(_MALFORMED_BASELINE, "not-an-object", "budget"),
+            "must have an object 'budget'",
+        ),
+        (
+            _drop(_MALFORMED_BASELINE, "budget", "limits"),
+            "must have an object 'budget.limits'",
+        ),
+        (
+            _set(_MALFORMED_BASELINE, "not-an-object", "budget", "limits"),
+            "must have an object 'budget.limits'",
+        ),
+        (_drop(_MALFORMED_BASELINE, "artifact"), "must have an object 'artifact'"),
+        (
+            _set(_MALFORMED_BASELINE, "not-an-object", "artifact"),
+            "must have an object 'artifact'",
+        ),
+        (
+            _drop(_MALFORMED_BASELINE, "artifact", "analysis_id"),
+            "must have a non-empty string 'artifact.analysis_id'",
+        ),
+        (
+            _set(_MALFORMED_BASELINE, 5, "artifact", "analysis_id"),
+            "must have a non-empty string 'artifact.analysis_id'",
+        ),
+        (
+            _set(_MALFORMED_BASELINE, "", "artifact", "analysis_id"),
+            "must have a non-empty string 'artifact.analysis_id'",
+        ),
+        (
+            _drop(_MALFORMED_BASELINE, "artifact", "sha256"),
+            "must have a non-empty string 'artifact.sha256'",
+        ),
+        (
+            _set(_MALFORMED_BASELINE, 5, "artifact", "sha256"),
+            "must have a non-empty string 'artifact.sha256'",
+        ),
+        (
+            _set(_MALFORMED_BASELINE, 5, "artifact", "path"),
+            "must have a string 'artifact.path'",
+        ),
+    ],
+)
+def test_compare_artifact_rejects_invalid_container_shapes(
+    tmp_path, service, payload, expected_fragment
+):
+    constructor, _, _, _ = service
+    baseline = tmp_path / "baseline.json"
+    baseline.write_text(json.dumps(payload))
+
+    result = runner.invoke(
+        app,
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--compare-artifact",
+            str(baseline),
+            "--output-mode",
+            "ci",
+            "--graph-output",
+            str(tmp_path / "graph.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    result_payload = json.loads(result.output)
+    assert result_payload["error_class"] == "invalid-invocation"
+    assert expected_fragment in result_payload["message"]
+    constructor.assert_not_called()
+
+
+def test_compare_artifact_rejects_containers_exceeding_the_hard_ceiling(
+    tmp_path, service, monkeypatch
+):
+    constructor, _, _, _ = service
+    monkeypatch.setattr(dependency_command, "MAX_COMPARISON_GRAPH_NODES", 1)
+    baseline = tmp_path / "baseline.json"
+    baseline.write_text(
+        json.dumps({"graph": {"nodes": [{"id": "a"}, {"id": "b"}]}})
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--compare-artifact",
+            str(baseline),
+            "--output-mode",
+            "ci",
+            "--graph-output",
+            str(tmp_path / "graph.json"),
+        ],
+    )
+
+    assert result.exit_code == 1
+    payload = json.loads(result.output)
+    assert "'graph.nodes' exceeds the 1 entry ceiling" in payload["message"]
+    constructor.assert_not_called()
+
+
+def test_compare_artifact_error_raises_bad_parameter_outside_ci_mode(
+    tmp_path, service
+):
+    constructor, _, _, _ = service
+    baseline = tmp_path / "baseline.json"
+    baseline.write_text("{not-json")
+
+    result = runner.invoke(
+        app,
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--compare-artifact",
+            str(baseline),
+            "--graph-output",
+            str(tmp_path / "graph.json"),
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "Invalid value for --compare-artifact" in result.output
+    constructor.assert_not_called()
+    assert not (tmp_path / "graph.json").exists()
+
+
+def test_success_result_and_persisted_artifact_share_artifact_reference(
+    tmp_path, service
+):
+    graph = tmp_path / "graph.json"
+    result = runner.invoke(
+        app,
+        [
+            "dependency",
+            "resource",
+            "ri.foundry.main.dataset.abc",
+            "--output-mode",
+            "agent",
+            "--format",
+            "json",
+            "--graph-output",
+            str(graph),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    returned = json.loads(result.output)
+    persisted = json.loads(graph.read_text())
+    expected_reference = {
+        "artifact_id": persisted["artifact"]["analysis_id"],
+        "path": persisted["artifact"]["path"],
+        "sha256": persisted["artifact"]["sha256"],
+    }
+    assert returned["agent"]["artifact_reference"] == expected_reference
+    assert persisted["agent"]["artifact_reference"] == expected_reference
 
 
 def test_partial_gap_exits_zero_and_table_references_complete_artifact(tmp_path, service):

@@ -112,7 +112,15 @@ pltr dataset files list ri.foundry.main.dataset.abc123
 # Assess a dataset's observed dependency footprint and retain the complete graph
 pltr dependency resource ri.foundry.main.dataset.abc123 \
   --change "rename a column" \
+  --change-type rename \
+  --output-mode agent \
   --graph-output ./dataset-dependencies.json
+
+# Compare a retained graph in CI (exit 0 clean, 2 needs verification, 1 fatal)
+pltr dependency resource ri.foundry.main.dataset.abc123 \
+  --compare-artifact ./dataset-dependencies.json \
+  --output-mode ci \
+  --graph-output ./dataset-dependencies-current.json
 
 # Dataset transaction management
 pltr dataset transactions start ri.foundry.main.dataset.abc123

@@ -11,8 +11,8 @@ This skill helps you use the pltr-cli to interact with Palantir Foundry effectiv
 
 - **Skill version**: 1.1.0
 - **pltr-cli version**: 0.12.0+
-- **Python**: 3.9, 3.10, 3.11, 3.12
-- **Dependencies**: foundry-platform-sdk >= 1.69.0
+- **Python**: 3.10, 3.11, 3.12
+- **Dependencies**: foundry-platform-sdk == 1.95.0
 
 ## Overview
 

@@ -44,13 +44,42 @@ third-party applications after resolution. Schedules and standalone Functions
 are traversed only when discovered; they are not direct target commands.
 Workshop names and variables are not accepted as targets.
 
-Every command accepts `--branch`, `--profile`, `--change`, `--direction`,
-`--depth`, `--max-nodes`, `--max-requests`, `--max-pages`, `--max-items`,
-`--time-budget-seconds`, `--format table|json|csv`, `--output`,
-`--graph-output`, and `--full`. Defaults are depth 2, 150 nodes, 200 requests,
-100 pages, 10,000 items, and 60 seconds. Hard ceilings are respectively 10,
-1,000, 1,000, 500, 100,000, and 600 seconds. `--full` only expands the table;
-it never changes discovery or artifact completeness.
+Every command accepts `--branch`, `--profile`, `--change`, `--change-type`,
+`--compare-artifact`, `--output-mode`, `--direction`, `--depth`, `--max-nodes`,
+`--max-requests`, `--max-pages`, `--max-items`, `--time-budget-seconds`,
+`--format table|json|csv`, `--output`, `--graph-output`, and `--full`.
+`--change-type` is one of `rename`, `type-change`, `optional-to-required`,
+`required-to-optional`, `remove-delete`, `action-input-change`, or
+`query-output-change`. It is additive to free-text `--change`; an explicit type
+wins, while free text without an explicit type is marked as inferred in the result.
+
+`--output-mode graph|agent|ci` defaults to `graph`. Graph mode preserves the
+complete graph rendering and adds verification and blast-radius counts. Agent
+mode gives a compact assessment for table output; JSON and CSV remain complete
+machine-readable projections, with CSV including an `agent` row. CI mode emits
+one JSON summary line and exits `0` for `clean`, `2` for
+`needs-verification`, or `1` for fatal authentication, discovery, rendering, or
+artifact failures.
+
+Defaults are depth 2, 150 nodes, 200 requests, 100 pages, 10,000 items, and 60
+seconds. Hard ceilings are respectively 10, 1,000, 1,000, 500, 100,000, and 600
+seconds. `--full` only expands the graph-mode table; it never changes discovery
+or artifact completeness.
+
+```bash
+# Agent-oriented assessment with an explicit change classification
+pltr dependency object-type ri.ontology.main.ontology.example Employee \
+  --change "rename employeeNumber" \
+  --change-type rename \
+  --output-mode agent \
+  --graph-output ./employee-dependencies.json
+
+# Compare the current graph with a retained artifact and gate in CI
+pltr dependency object-type ri.ontology.main.ontology.example Employee \
+  --compare-artifact ./employee-dependencies.json \
+  --output-mode ci \
+  --graph-output ./employee-dependencies-current.json
+```
 
 Each successful invocation writes the complete graph before rendering. Use
 `--graph-output PATH`, or find it under
@@ -59,8 +88,13 @@ Artifacts are written atomically with mode `0600`; their retention and deletion
 are operator-managed. `--output` controls the requested table/JSON/CSV rendering
 and never replaces the graph artifact. Compact output includes the same analysis
 ID, absolute artifact path, SHA-256 digest, top path/evidence, gaps, and budgets.
-CSV has explicit `node`, `edge`, `path`, `coverage`, `gap`, `error`, `evidence`,
-and `operation-provenance` row kinds.
+The additive agent block is versioned as
+`agent.schema_version = "dependency-agent-v1"`. `--compare-artifact PATH` loads a
+previous JSON graph artifact and reports stable edge-ID additions, removals,
+coverage changes, newly introduced impacts, and whether removals may be due to
+budget truncation. CSV has explicit `artifact`, `agent`, `read-context`, `node`,
+`edge`, `path`, `coverage`, `gap`, `error`, `evidence`, and
+`operation-provenance` row kinds.
 
 Relations retain intrinsic orientation. Dependency-flow relations derive
 root-relative upstream/downstream paths; adjacent-structural relations remain
@@ -80,8 +114,9 @@ capability IDs, installed SDK version, timestamps, timeout, and exact branch and
 preview argument states (`explicit`, `server-default`, or `not-applicable`).
 Fatal errors use stable classes including `authentication`, `permission-denied`,
 `not-found`, `branch-not-found`, `rate-limited`, `timeout`, `connection`,
-`invalid-request`, `unsupported`, `invalid-response`, `budget-exhausted`,
-`artifact-write-failed`, `internal`, and `unknown`.
+`invalid-request`, `unsupported`, `unsupported-addressability`,
+`invalid-response`, `budget-exhausted`, `artifact-write-failed`, `internal`,
+and `unknown`.
 
 Dataset schedule RIDs are verified evidence, but the SDK documents that the
 reverse schedule index may lag by up to one hour. Therefore even a successful

@@ -11,6 +11,7 @@ from pltr.utils.dependency_artifacts import (
     ArtifactWriteError,
     artifact_identity,
     default_artifact_path,
+    serialize_dependency_result,
     write_dependency_artifact,
 )
 
@@ -92,6 +93,13 @@ def result_fixture():
 
 def independent_payload_digest(document):
     payload = {key: value for key, value in document.items() if key != "artifact"}
+    agent = payload.get("agent")
+    if isinstance(agent, dict):
+        payload["agent"] = {
+            key: value
+            for key, value in agent.items()
+            if key != "artifact_reference"
+        }
     canonical = json.dumps(
         payload,
         ensure_ascii=False,
@@ -215,3 +223,84 @@ def test_artifact_provenance_schema_and_evidence_references_are_exact(tmp_path):
                 "server-default",
                 "not-applicable",
             }
+
+
+def test_agent_block_round_trips_additively_without_losing_nested_values(tmp_path):
+    result = result_fixture()
+    result["agent"] = {
+        "schema_version": "dependency-agent-v1",
+        "status": "needs-verification",
+        "impacts": [
+            {
+                "impact_id": "impact-1",
+                "member_path_ids": ("path-1", "path-2"),
+                "all_member_evidence_ids": {"ev-1", "ev-2"},
+            }
+        ],
+        "verification": {
+            "must_verify_before_merge": [{"reason": "budget-truncation"}],
+            "should_verify_before_deploy": [],
+            "unsupported_manual_surfaces": [],
+        },
+        "diff": {
+            "added_edges": ["edge-2"],
+            "removed_edges": [
+                {"edge_id": "edge-3", "possibly_budget_truncated": True}
+            ],
+        },
+    }
+
+    serialized = serialize_dependency_result(result)
+    destination = tmp_path / "agent-graph.json"
+    metadata = write_dependency_artifact(serialized, destination)
+    document = json.loads(destination.read_text())
+
+    artifact_reference = document["agent"].pop("artifact_reference")
+    assert artifact_reference == {
+        "artifact_id": metadata["analysis_id"],
+        "path": metadata["path"],
+        "sha256": metadata["sha256"],
+    }
+    assert document["agent"] == serialized["agent"]
+    assert document["agent"]["impacts"][0]["member_path_ids"] == [
+        "path-1",
+        "path-2",
+    ]
+    assert document["agent"]["impacts"][0]["all_member_evidence_ids"] == [
+        "ev-1",
+        "ev-2",
+    ]
+    assert {
+        key: value for key, value in document.items() if key not in {"agent", "artifact"}
+    } == {key: value for key, value in serialized.items() if key != "agent"}
+
+
+def test_agent_artifact_reference_is_excluded_from_identity_and_replaced_on_write(
+    tmp_path,
+):
+    result = result_fixture()
+    result["agent"] = {
+        "schema_version": "dependency-agent-v1",
+        "artifact_reference": {
+            "artifact_id": "dep-stale",
+            "path": "/stale/path.json",
+            "sha256": "stale",
+        },
+    }
+    identity = artifact_identity(result)
+    result["agent"]["artifact_reference"] = {
+        "artifact_id": "dep-other",
+        "path": "/other/path.json",
+        "sha256": "other",
+    }
+    assert artifact_identity(result) == identity
+
+    destination = tmp_path / "graph.json"
+    metadata = write_dependency_artifact(result, destination)
+    document = json.loads(destination.read_text())
+    assert artifact_identity(document) == identity
+    assert document["agent"]["artifact_reference"] == {
+        "artifact_id": metadata["analysis_id"],
+        "path": metadata["path"],
+        "sha256": metadata["sha256"],
+    }

@@ -69,6 +69,7 @@ class OutputFormatter:
         output_file: Optional[str] = None,
         full: bool = False,
         protected_output_file: Optional[str] = None,
+        output_mode: str = "graph",
     ) -> str:
         """Render one already-complete dependency analysis without rediscovery."""
         if format_type == "json":
@@ -78,7 +79,10 @@ class OutputFormatter:
         elif format_type == "csv":
             rendered = self._format_dependency_csv(result)
         elif format_type == "table":
-            rendered = self._format_dependency_table(result, full=full)
+            if output_mode == "agent":
+                rendered = self._format_dependency_agent_table(result)
+            else:
+                rendered = self._format_dependency_table(result, full=full)
         else:
             raise ValueError(f"Unsupported format type: {format_type}")
 
@@ -144,6 +148,10 @@ class OutputFormatter:
             (
                 "artifact",
                 [result["artifact"]] if isinstance(result.get("artifact"), dict) else [],
+            ),
+            (
+                "agent",
+                [result["agent"]] if isinstance(result.get("agent"), dict) else [],
             ),
             ("read-context", result.get("read_contexts", [])),
             ("node", graph.get("nodes", result.get("nodes", []))),
@@ -285,11 +293,81 @@ class OutputFormatter:
             for dimension in dimensions
         ) or "not reported"
         lines.append(f"Budget: {budget_summary}")
+        agent = result.get("agent") or {}
+        if agent:
+            verification = agent.get("verification") or {}
+            groups = (agent.get("blast_radius") or {}).get("groups") or {}
+            lines.append(
+                "Agent verification: "
+                f"must={len(verification.get('must_verify_before_merge', []))} "
+                f"should={len(verification.get('should_verify_before_deploy', []))} "
+                f"unsupported={len(verification.get('unsupported_manual_surfaces', []))}"
+            )
+            lines.append(
+                "Agent blast radius: "
+                f"critical={len(groups.get('critical_paths', []))} "
+                f"structural={len(groups.get('structural_dependents', []))} "
+                f"indirect={len(groups.get('indirect_operational_effects', []))} "
+                f"unknown={len(groups.get('unknown_manual_verification', []))}"
+            )
         lines.extend(
             [
                 f"Analysis ID: {artifact.get('analysis_id', '')}",
                 f"Graph artifact: {artifact.get('path', '')}",
                 f"SHA-256: {artifact.get('sha256', '')}",
+            ]
+        )
+        return "\n".join(lines) + "\n"
+
+    def _format_dependency_agent_table(self, result: Dict[str, Any]) -> str:
+        """Compact agent-mode rendering built from the agent block (AU7)."""
+        agent = result.get("agent") or {}
+        artifact = result.get("artifact") or {}
+        verification = agent.get("verification") or {}
+        completeness = agent.get("coverage_completeness") or {}
+        lines = [
+            f"Dependency impact assessment [{agent.get('schema_version', 'unknown')}]",
+            f"Status: {agent.get('status', 'unknown')}",
+            f"Summary: {agent.get('summary', '')}",
+            f"Coverage: {'complete' if completeness.get('complete') else 'TRUNCATED'}",
+        ]
+        change = agent.get("change") or {}
+        if change.get("text") or change.get("change_type"):
+            lines.append(
+                "Change: "
+                + ", ".join(
+                    part
+                    for part in (
+                        str(change.get("text")) if change.get("text") else "",
+                        f"type={change.get('change_type')}" if change.get("change_type") else "",
+                        f"source={change.get('change_type_source')}",
+                    )
+                    if part
+                )
+            )
+        blast = agent.get("blast_radius") or {}
+        release = agent.get("release_risk") or {}
+        lines.append(
+            f"Blast radius: {blast.get('score')}/100 "
+            f"(release risk: {release.get('score') if release.get('score') is not None else 'n/a'})"
+        )
+        for bucket, label in (
+            ("must_verify_before_merge", "MUST verify before merge"),
+            ("should_verify_before_deploy", "SHOULD verify before deploy"),
+            ("unsupported_manual_surfaces", "Unsupported/manual surfaces"),
+        ):
+            items = verification.get(bucket) or []
+            lines.append(f"{label} ({len(items)}):")
+            for item in items[:10]:
+                subject = item.get("subject_display_name") or item.get("subject_node_id") or "(analysis-wide)"
+                reason = item.get("reason", "impact")
+                lines.append(f"  - [{reason}] {subject}")
+            if len(items) > 10:
+                lines.append(f"  ... {len(items) - 10} more (see graph artifact)")
+        lines.extend(
+            [
+                f"Analysis ID: {artifact.get('analysis_id', '')}",
+                f"Graph artifact: {artifact.get('path', '')}",
             ]
         )
         return "\n".join(lines) + "\n"

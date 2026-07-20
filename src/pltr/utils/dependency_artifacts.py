@@ -20,7 +20,7 @@ class ArtifactWriteError(RuntimeError):
 
 
 def _json_value(value: Any) -> Any:
-    if is_dataclass(value):
+    if is_dataclass(value) and not isinstance(value, type):
         return _json_value(asdict(value))
     if hasattr(value, "model_dump"):
         return _json_value(value.model_dump(mode="json"))
@@ -54,15 +54,26 @@ def serialize_dependency_result(result: Any) -> dict[str, Any]:
     return value
 
 
+def _identity_payload(result: Mapping[str, Any]) -> dict[str, Any]:
+    """Return payload content with self-referential artifact metadata removed."""
+    payload = dict(_json_value(result))
+    payload.pop("artifact", None)
+    agent = payload.get("agent")
+    if isinstance(agent, Mapping) and "artifact_reference" in agent:
+        payload["agent"] = dict(agent)
+        payload["agent"].pop("artifact_reference", None)
+    return payload
+
+
 def artifact_identity(result: Mapping[str, Any]) -> tuple[str, str]:
     """Return ``(analysis_id, sha256)`` for the non-self-referential payload.
 
-    Artifact metadata is deliberately excluded. All graph, coverage, failure,
-    budget, evidence, and operation-provenance content remains inside the hash.
+    Top-level artifact metadata and ``agent.artifact_reference`` are deliberately
+    excluded. All graph, coverage, failure, budget, evidence, and
+    operation-provenance content remains inside the hash.
     """
 
-    payload = dict(_json_value(result))
-    payload.pop("artifact", None)
+    payload = _identity_payload(result)
     digest = hashlib.sha256(_canonical_bytes(payload)).hexdigest()
     return f"dep-{digest[:20]}", digest
 
@@ -78,8 +89,7 @@ def write_dependency_artifact(
 ) -> dict[str, Any]:
     """Atomically write a complete dependency result and return artifact metadata."""
 
-    payload = dict(_json_value(result))
-    payload.pop("artifact", None)
+    payload = _identity_payload(result)
     analysis_id, digest = artifact_identity(payload)
     destination = (
         Path(graph_output).expanduser().resolve()
@@ -93,6 +103,16 @@ def write_dependency_artifact(
         "sha256": digest,
         "created_at": created_at,
     }
+    agent = payload.get("agent")
+    if isinstance(agent, Mapping):
+        payload["agent"] = {
+            **agent,
+            "artifact_reference": {
+                "artifact_id": analysis_id,
+                "path": str(destination),
+                "sha256": digest,
+            },
+        }
     document = {**payload, "artifact": metadata}
 
     temporary_name: Optional[str] = None

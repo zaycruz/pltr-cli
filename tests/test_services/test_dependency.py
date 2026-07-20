@@ -13,10 +13,17 @@ from foundry_sdk.v2.ontologies import models as ontology_models
 from foundry_sdk.v2.orchestration import models as orchestration_models
 
 from pltr.services.dependency import (
+    AGENT_SCHEMA_VERSION,
     CAPABILITY_IDS,
     ACTION_LOGIC_RULE_TYPES,
+    BLAST_RADIUS_WEIGHT_TABLE_VERSION,
+    CHANGE_TYPES,
+    IMPACT_CATEGORIES,
+    IMPACT_CATEGORY_BASE,
+    IMPACT_CATEGORY_CHANGE_OVERRIDES,
     QUERY_DATA_TYPE_TYPES,
     RELATION_KINDS,
+    RELEASE_RISK_WEIGHT_TABLE_VERSION,
     SDK_OPERATION_SPECS,
     AnalysisContext,
     ArgumentObservation,
@@ -467,7 +474,14 @@ def test_dependency_flow_reverses_only_root_relative_direction(
     assert service._add_edge(analysis, source.id, target.id, relation_kind, []).id == edge.id
 
 
-@pytest.mark.parametrize("relation_kind", ["declared-link", "container-member", "peer"])
+@pytest.mark.parametrize(
+    "relation_kind",
+    [
+        relation_kind
+        for relation_kind, (traversal_class, _) in RELATION_KINDS.items()
+        if traversal_class == "adjacent-structural"
+    ],
+)
 def test_structural_relations_remain_adjacent_from_reciprocal_roots(relation_kind):
     service = DependencyGraphService(client=SimpleNamespace())
     analysis = context()
@@ -3125,3 +3139,1314 @@ def test_change_ranking_varies_by_relation_and_prefers_verified_coverage():
     assert schema_ranked[0]["coverage_confidence"] == "verified"
     assert schedule_ranked[0]["related_node_id"] == schedule.id
     assert schedule_ranked[0]["coverage_confidence"] == "partial"
+
+
+@pytest.mark.parametrize(
+    ("edge_coverage", "expected_confidence"),
+    [("unresolved", "partial"), ("unsupported", "unsupported")],
+)
+def test_ranked_paths_report_three_state_coverage_confidence(
+    edge_coverage, expected_confidence
+):
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    root = service._add_node(analysis, "dataset", "root", {"rid": "root"})
+    related = service._add_node(
+        analysis, "schedule", "consumer", {"schedule_rid": "consumer"}
+    )
+    service._add_edge(
+        analysis,
+        root.id,
+        related.id,
+        "schedule-consumes-resource",
+        [],
+        coverage=edge_coverage,
+    )
+
+    ranked = service._rank_paths(
+        analysis, service._derive_paths(analysis, root.id, "both"), None
+    )
+
+    assert ranked[0]["coverage_confidence"] == expected_confidence
+
+
+def test_semantic_impact_dedupe_unions_evidence_but_separates_direction():
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    related = service._add_node(
+        analysis, "object-type", "Employee", {"object_type": "Employee"}
+    )
+    ranked = [
+        {
+            "id": "path-a",
+            "related_node_id": related.id,
+            "direction": "downstream",
+            "relation_kind": "query-returns-object",
+            "steps": [{"edge_id": "edge-a"}],
+            "evidence_ids": ["evidence-a"],
+            "coverage_confidence": "verified",
+            "hop_count": 1,
+            "readable_path": "Query -> Employee",
+            "first_evidence_locator": "output",
+        },
+        {
+            "id": "path-b",
+            "related_node_id": related.id,
+            "direction": "downstream",
+            "relation_kind": "query-returns-object",
+            "steps": [{"edge_id": "edge-b"}],
+            "evidence_ids": ["evidence-b", "evidence-a"],
+            "coverage_confidence": "partial",
+            "hop_count": 2,
+            "readable_path": "Query -> Function -> Employee",
+            "first_evidence_locator": "returnType",
+        },
+        {
+            "id": "path-c",
+            "related_node_id": related.id,
+            "direction": "upstream",
+            "relation_kind": "query-returns-object",
+            "steps": [{"edge_id": "edge-c"}],
+            "evidence_ids": ["evidence-c"],
+            "coverage_confidence": "verified",
+            "hop_count": 1,
+            "readable_path": "Employee <- Query",
+            "first_evidence_locator": "output",
+        },
+    ]
+
+    impacts = service._dedupe_ranked_impacts(analysis, ranked, None)
+
+    assert len(impacts) == 2
+    downstream = next(
+        impact for impact in impacts if impact["direction_class"] == "downstream"
+    )
+    assert downstream["representative_path_id"] == "path-a"
+    assert downstream["member_path_ids"] == ["path-a", "path-b"]
+    assert downstream["representative_evidence_ids"] == ["evidence-a"]
+    assert downstream["all_member_evidence_ids"] == ["evidence-a", "evidence-b"]
+    assert {impact["direction_class"] for impact in impacts} == {
+        "downstream",
+        "upstream",
+    }
+
+
+def test_impact_category_tables_are_closed_complete_and_override_specific():
+    assert set(IMPACT_CATEGORY_BASE) == set(RELATION_KINDS)
+    assert set(IMPACT_CATEGORY_BASE.values()) <= set(IMPACT_CATEGORIES)
+    assert all(
+        change_type in CHANGE_TYPES
+        and relation_kind in RELATION_KINDS
+        and direction in {"upstream", "downstream", "adjacent"}
+        and category in IMPACT_CATEGORIES
+        for (change_type, relation_kind, direction), category in (
+            IMPACT_CATEGORY_CHANGE_OVERRIDES.items()
+        )
+    )
+    assert DependencyGraphService._resolve_impact_category(
+        "declared-link", "adjacent", "rename"
+    ) == "contract-break"
+    assert DependencyGraphService._resolve_impact_category(
+        "declared-link", "adjacent", None
+    ) == "schema-break"
+    assert DependencyGraphService._resolve_impact_category(
+        "query-returns-object", "upstream", "rename"
+    ) == "semantic-break"
+    assert DependencyGraphService._resolve_change_type(
+        "rename the field", None
+    ) == ("rename", "inferred")
+    assert DependencyGraphService._resolve_change_type(
+        "rename the field", "type-change"
+    ) == ("type-change", "explicit")
+
+
+def _impact(
+    impact_id,
+    node_id,
+    *,
+    category,
+    direction,
+    confidence,
+    hop_count,
+):
+    return {
+        "impact_id": impact_id,
+        "related_node_id": node_id,
+        "related_display_name": impact_id,
+        "impact_category": category,
+        "direction_class": direction,
+        "coverage_confidence": confidence,
+        "hop_count": hop_count,
+        "why_it_matters": f"verify {impact_id}",
+    }
+
+
+def test_verification_buckets_are_exact_disjoint_and_precedence_ordered():
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    nodes = [
+        service._add_node(analysis, "object-type", name, {"object_type": name})
+        for name in ("critical", "structural", "indirect", "unknown")
+    ]
+    impacts = [
+        _impact(
+            "critical",
+            nodes[0].id,
+            category="runtime-break",
+            direction="downstream",
+            confidence="verified",
+            hop_count=1,
+        ),
+        _impact(
+            "structural",
+            nodes[1].id,
+            category="schema-break",
+            direction="adjacent",
+            confidence="unsupported",
+            hop_count=1,
+        ),
+        _impact(
+            "indirect",
+            nodes[2].id,
+            category="workflow-break",
+            direction="downstream",
+            confidence="partial",
+            hop_count=2,
+        ),
+        _impact(
+            "unknown",
+            nodes[3].id,
+            category="unknown",
+            direction="downstream",
+            confidence="unsupported",
+            hop_count=2,
+        ),
+    ]
+
+    result = service._classify_agent_results(analysis, impacts)
+    verification = result["verification"]
+
+    assert set(verification) == {
+        "must_verify_before_merge",
+        "should_verify_before_deploy",
+        "unsupported_manual_surfaces",
+    }
+    memberships = [
+        impact_id
+        for items in verification.values()
+        for item in items
+        for impact_id in item["related_impact_ids"]
+    ]
+    assert sorted(memberships) == sorted(impact["impact_id"] for impact in impacts)
+    assert len(memberships) == len(set(memberships))
+    assert {
+        item["related_impact_ids"][0]
+        for item in verification["must_verify_before_merge"]
+    } == {"critical", "structural"}
+
+
+def test_verification_aggregates_mixed_impacts_and_gap_by_subject_precedence():
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    subject = service._add_node(
+        analysis, "object-type", "Employee", {"object_type": "Employee"}
+    )
+    impacts = [
+        _impact(
+            "critical",
+            subject.id,
+            category="runtime-break",
+            direction="downstream",
+            confidence="verified",
+            hop_count=1,
+        ),
+        _impact(
+            "indirect",
+            subject.id,
+            category="workflow-break",
+            direction="downstream",
+            confidence="partial",
+            hop_count=2,
+        ),
+        _impact(
+            "unsupported",
+            subject.id,
+            category="unknown",
+            direction="downstream",
+            confidence="unsupported",
+            hop_count=2,
+        ),
+    ]
+    service._add_gap(
+        analysis,
+        subject.id,
+        "full-action-metadata",
+        "unresolved",
+        "metadata-unresolved",
+        "Action metadata could not be resolved",
+    )
+
+    verification = service._classify_agent_results(analysis, impacts)[
+        "verification"
+    ]
+    subject_entries = [
+        (bucket, item)
+        for bucket, items in verification.items()
+        for item in items
+        if item["subject_node_id"] == subject.id
+    ]
+
+    assert len(subject_entries) == 1
+    bucket, item = subject_entries[0]
+    assert bucket == "must_verify_before_merge"
+    assert item["reason"] == "coverage-gap"
+    assert item["related_impact_ids"] == [
+        "critical",
+        "indirect",
+        "unsupported",
+    ]
+
+
+def test_budget_exhaustion_forces_must_verify_without_discovered_impacts():
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    analysis.caches[("budget-exhausted",)] = BudgetExhausted(
+        "requests", analysis.budget.snapshot()
+    )
+
+    result = service._classify_agent_results(analysis, [])
+
+    assert result["coverage_completeness"]["budget_exhausted"] is True
+    assert result["verification"]["must_verify_before_merge"][0]["reason"] == (
+        "budget-truncation"
+    )
+
+
+def test_coverage_gap_touching_structural_impact_forces_must_verify():
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    node = service._add_node(
+        analysis, "object-type", "Employee", {"object_type": "Employee"}
+    )
+    service._add_gap(
+        analysis,
+        node.id,
+        "full-action-metadata",
+        "unresolved",
+        "metadata-unresolved",
+        "Action metadata could not be resolved",
+    )
+    impacts = [
+        _impact(
+            "structural",
+            node.id,
+            category="schema-break",
+            direction="adjacent",
+            confidence="verified",
+            hop_count=1,
+        )
+    ]
+
+    result = service._classify_agent_results(analysis, impacts)
+
+    assert any(
+        item["reason"] == "coverage-gap"
+        for item in result["verification"]["must_verify_before_merge"]
+    )
+
+
+def test_static_unsupported_matrix_gap_routes_unsupported_not_must_and_stays_clean():
+    """A structurally unsupported/manual surface (a static MATRIX_GAPS
+    limitation for this target kind) is not a merge blocker: it routes to
+    unsupported_manual_surfaces, must_verify_before_merge stays empty, and
+    the agent status remains clean/CI-eligible even though coverage is
+    incomplete."""
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    node = service._add_node(
+        analysis, "generic-resource", "widget", {"resource_rid": "widget"}, True
+    )
+    target = DependencyTarget(
+        "generic-resource", node.identifiers, node.display_name, node.id
+    )
+    service._initialize_matrix(analysis, target)
+    # `compass-metadata` is the one static surface MATRIX_GAPS never covers
+    # for this kind; finish it the way a real collector would so this test
+    # isolates the static-unsupported-gap behavior under verification.
+    compass = service._coverage_record(
+        analysis, "generic-resource", "compass-metadata", node.id
+    )
+    service._finish_coverage(compass, "covered", evidence_ids=[])
+    service._remove_gaps(
+        analysis, node.id, "compass-metadata", "collector-did-not-report"
+    )
+
+    classification = service._classify_agent_results(analysis, [])
+    agent = service._build_agent_block(
+        analysis, target, None, None, "absent", [], classification, None
+    )
+    verification = classification["verification"]
+
+    assert verification["must_verify_before_merge"] == []
+    assert {
+        item["subject_node_id"] for item in verification["unsupported_manual_surfaces"]
+    } == {node.id}
+    assert classification["coverage_completeness"]["complete"] is False
+    assert agent["status"] == "clean"
+
+
+def test_dynamic_unsupported_gap_with_non_matrix_reason_stays_must_and_non_clean():
+    """A dynamic collector failure that happens to carry coverage="unsupported"
+    (e.g. a live API-not-found response) is not a static MATRIX_GAPS surface
+    limitation -- its reason_code is not in STATIC_UNSUPPORTED_GAP_REASONS,
+    so it must stay in must_verify_before_merge, not unsupported_manual_surfaces,
+    and the agent must not report clean."""
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    node = service._add_node(
+        analysis, "object-type", "Employee", {"object_type": "Employee"}, True
+    )
+    target = DependencyTarget(
+        "object-type", node.identifiers, node.display_name, node.id
+    )
+    service._add_gap(
+        analysis,
+        node.id,
+        "full-action-metadata",
+        "unsupported",
+        "unsupported",
+        "The Foundry API reported this surface as not found",
+    )
+
+    classification = service._classify_agent_results(analysis, [])
+    agent = service._build_agent_block(
+        analysis, target, None, None, "absent", [], classification, None
+    )
+    verification = classification["verification"]
+
+    assert verification["unsupported_manual_surfaces"] == []
+    assert {
+        item["subject_node_id"] for item in verification["must_verify_before_merge"]
+    } == {node.id}
+    assert agent["status"] == "needs-verification"
+
+
+
+def test_supported_complete_coverage_stays_clean_and_ci_eligible():
+    """A target with genuinely complete, supported coverage (no gaps at all)
+    stays clean and CI-eligible -- the routing change must not regress the
+    baseline no-gap case."""
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    node = service._add_node(
+        analysis, "object-type", "Employee", {"object_type": "Employee"}, True
+    )
+    target = DependencyTarget(
+        "object-type", node.identifiers, node.display_name, node.id
+    )
+
+    classification = service._classify_agent_results(analysis, [])
+    agent = service._build_agent_block(
+        analysis, target, None, None, "absent", [], classification, None
+    )
+
+    assert classification["verification"] == {
+        "must_verify_before_merge": [],
+        "should_verify_before_deploy": [],
+        "unsupported_manual_surfaces": [],
+    }
+    assert classification["coverage_completeness"]["complete"] is True
+    assert agent["status"] == "clean"
+
+
+def test_scores_are_versioned_deterministic_and_budget_sensitive():
+    service = DependencyGraphService(client=SimpleNamespace())
+    groups = {
+        "critical_paths": ["critical"],
+        "structural_dependents": ["structural"],
+        "indirect_operational_effects": [],
+        "unknown_manual_verification": [],
+    }
+    first = context()
+    identical = context()
+    changed_budget = context(max_depth=3)
+
+    blast_absent, release_absent = service._compute_scores(
+        first, groups, None, "absent"
+    )
+    blast_explicit, release_explicit = service._compute_scores(
+        identical, groups, "remove-delete", "explicit"
+    )
+    blast_changed, _ = service._compute_scores(
+        changed_budget, groups, "remove-delete", "explicit"
+    )
+
+    assert blast_absent["score"] == blast_explicit["score"] == 16
+    assert blast_absent["weight_table_version"] == BLAST_RADIUS_WEIGHT_TABLE_VERSION
+    assert release_absent == {
+        "score": None,
+        "weight_table_version": RELEASE_RISK_WEIGHT_TABLE_VERSION,
+        "budget_fingerprint": blast_absent["budget_fingerprint"],
+        "change_type_source": "absent",
+    }
+    assert release_explicit["score"] == 24
+    assert release_explicit["change_type_source"] == "explicit"
+    assert blast_absent["budget_fingerprint"] == blast_explicit["budget_fingerprint"]
+    assert blast_changed["budget_fingerprint"] != blast_absent["budget_fingerprint"]
+    assert all(0 <= score <= 100 for score in (blast_absent["score"], release_explicit["score"]))
+
+
+def test_unclassified_free_text_change_still_produces_inferred_release_risk():
+    service = DependencyGraphService(client=SimpleNamespace())
+    groups = {
+        "critical_paths": ["critical"],
+        "structural_dependents": [],
+        "indirect_operational_effects": [],
+        "unknown_manual_verification": [],
+    }
+
+    resolved, source = service._resolve_change_type(
+        "adjust employee business semantics", None
+    )
+    _, release_risk = service._compute_scores(context(), groups, resolved, source)
+
+    assert (resolved, source) == (None, "inferred")
+    assert release_risk["score"] == 10
+    assert release_risk["change_type_source"] == "inferred"
+
+
+@pytest.mark.parametrize(
+    "budget_override",
+    [
+        {"max_requests": 201},
+        {"max_pages": 101},
+        {"max_items": 10_001},
+        {"max_nodes": 151},
+        {"max_depth": 3},
+        {"time_budget_seconds": 61},
+    ],
+)
+def test_budget_fingerprint_changes_for_every_discovery_limit(budget_override):
+    baseline = DependencyGraphService._budget_fingerprint(context())
+
+    assert DependencyGraphService._budget_fingerprint(
+        context(**budget_override)
+    ) != baseline
+
+
+def test_action_and_query_contracts_project_only_from_cached_metadata():
+    client = Mock()
+    service = DependencyGraphService(client=client)
+    analysis = context()
+    action = service._add_node(
+        analysis,
+        "action-type",
+        "Promote",
+        {"ontology_rid": "ontology", "action_type": "Promote"},
+    )
+    query = service._add_node(
+        analysis,
+        "query-type",
+        "FindEmployee",
+        {"ontology_rid": "ontology", "query_type": "FindEmployee"},
+    )
+    employee_filter = service._add_node(
+        analysis,
+        "object-type",
+        "EmployeeFilter",
+        {"object_type": "EmployeeFilter"},
+    )
+    employee = service._add_node(
+        analysis, "object-type", "Employee", {"object_type": "Employee"}
+    )
+    department = service._add_node(
+        analysis, "object-type", "Department", {"object_type": "Department"}
+    )
+    consumer = service._add_node(
+        analysis,
+        "query-type",
+        "SummarizeEmployee",
+        {"ontology_rid": "ontology", "query_type": "SummarizeEmployee"},
+    )
+    function = service._add_node(
+        analysis, "function", "validate", {"function_rid": "function"}
+    )
+    service._add_edge(
+        analysis, action.id, function.id, "action-uses-function", []
+    )
+    service._add_edge(
+        analysis, employee_filter.id, query.id, "query-accepts-object", []
+    )
+    service._add_edge(
+        analysis, query.id, employee.id, "query-returns-object", []
+    )
+    service._add_edge(
+        analysis, employee.id, consumer.id, "query-accepts-object", []
+    )
+    service._add_gap(
+        analysis,
+        employee.id,
+        "query-related-function-metadata",
+        "unresolved",
+        "reverse-query-mapping-unavailable",
+        "Reverse query consumer metadata is unavailable for Employee",
+    )
+    service._add_gap(
+        analysis,
+        query.id,
+        "query-related-function-metadata",
+        "unresolved",
+        "query-consumer-metadata-unavailable",
+        "Query consumer metadata is unavailable for FindEmployee",
+    )
+    parameter_type = ontology_models.OntologyObjectType.model_construct(
+        object_api_name="Employee", object_type_api_name="Employee"
+    )
+    department_type = ontology_models.OntologyObjectType.model_construct(
+        object_api_name="Department", object_type_api_name="Department"
+    )
+    action_metadata = SimpleNamespace(
+        action_type=SimpleNamespace(
+            parameters={
+                "department": SimpleNamespace(
+                    data_type=department_type, required=False
+                ),
+                "employee": SimpleNamespace(data_type=parameter_type, required=True),
+            }
+        ),
+        full_logic_rules=[
+            {"type": "modifyObject", "propertyArguments": {"name": "value"}}
+        ],
+    )
+    query_metadata = SimpleNamespace(
+        parameters={"employee": SimpleNamespace(data_type=parameter_type)},
+        output=parameter_type,
+    )
+    branch = analysis.read_context.requested_branch
+    analysis.caches[("action-metadata", "ontology", branch, "Promote")] = (
+        action_metadata,
+        "operation-action",
+    )
+    analysis.caches[("query-metadata", "ontology", branch, "FindEmployee")] = (
+        query_metadata,
+        "operation-query",
+    )
+
+    contracts = service._project_action_query_contracts(
+        analysis, [{"related_node_id": employee.id}]
+    )
+
+    client.assert_not_called()
+    assert contracts["actions"] == [
+        {
+            "action_type": "Promote",
+            "inputs": [
+                {
+                    "parameter_id": "department",
+                    "data_type": "object",
+                    "required": False,
+                },
+                {"parameter_id": "employee", "data_type": "object", "required": True}
+            ],
+            "writes_deletes": [
+                {"operation": "write", "rule_index": 0, "type": "modifyObject"}
+            ],
+            "affected_fields": ["name"],
+            "validation_risks": ["employee"],
+            "runtime_consumers": ["validate"],
+        }
+    ]
+    assert contracts["queries"] == [
+        {
+            "query_type": "FindEmployee",
+            "inputs": [{"parameter_id": "employee", "data_type": "object"}],
+            "outputs": [
+                {
+                    "data_type": "object-type",
+                    "name": "Employee",
+                    "locator": "output",
+                }
+            ],
+            "input_producers": ["EmployeeFilter"],
+            "likely_downstream_consumers": ["SummarizeEmployee"],
+            "unresolved_consumers": [
+                "Query consumer metadata is unavailable for FindEmployee",
+                "Reverse query consumer metadata is unavailable for Employee"
+            ],
+        }
+    ]
+    assert "Employee" not in contracts["queries"][0]["likely_downstream_consumers"]
+    assert department.display_name not in contracts["actions"][0]["validation_risks"]
+
+
+def test_artifact_diff_classifies_removed_edges_by_subject_local_budget_state():
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    root = service._add_node(analysis, "dataset", "root", {"rid": "root"})
+    shared = service._add_node(analysis, "schedule", "shared", {"rid": "shared"})
+    added = service._add_node(analysis, "schedule", "added", {"rid": "added"})
+    actually_removed = service._add_node(
+        analysis, "schedule", "removed", {"rid": "removed"}
+    )
+    shared_edge = service._add_edge(
+        analysis,
+        root.id,
+        shared.id,
+        "schedule-consumes-resource",
+        [],
+        coverage="verified",
+    )
+    added_edge = service._add_edge(
+        analysis,
+        root.id,
+        added.id,
+        "schedule-produces-resource",
+        [],
+    )
+    service._add_gap(
+        analysis,
+        root.id,
+        "schedule-reverse-index",
+        "budget-exhausted",
+        "budget-exhausted",
+        "Schedule discovery stopped at the local subject budget",
+    )
+    omitted_node = {
+        "id": "node-omitted",
+        "kind": "schedule",
+        "identifiers": {"rid": "omitted"},
+    }
+    sibling_source = {
+        "id": "node-sibling-source",
+        "kind": "schedule",
+        "identifiers": {"rid": "sibling-source"},
+    }
+    sibling_target = {
+        "id": "node-sibling-target",
+        "kind": "schedule",
+        "identifiers": {"rid": "sibling-target"},
+    }
+    baseline = {
+        "target": {
+            "kind": "dataset",
+            "identifiers": root.identifiers,
+            "node_id": root.id,
+        },
+        "read_contexts": [
+            {
+                "ontology_rid": analysis.read_context.ontology_rid,
+                "requested_branch": analysis.read_context.requested_branch,
+            }
+        ],
+        "graph": {
+            "nodes": [
+                service._serialize(root),
+                service._serialize(shared),
+                service._serialize(actually_removed),
+                omitted_node,
+                sibling_source,
+                sibling_target,
+            ],
+            "edges": [
+                {
+                    "id": shared_edge.id,
+                    "source": root.id,
+                    "target": shared.id,
+                    "coverage": "partial",
+                },
+                {
+                    "id": "edge-actual-removal",
+                    "source": root.id,
+                    "target": actually_removed.id,
+                    "coverage": "verified",
+                },
+                {
+                    "id": "edge-truncated-omission",
+                    "source": root.id,
+                    "target": omitted_node["id"],
+                    "coverage": "verified",
+                },
+                {
+                    "id": "edge-unrelated-removal",
+                    "source": sibling_source["id"],
+                    "target": sibling_target["id"],
+                    "coverage": "verified",
+                },
+            ]
+        },
+        "budget": {"limits": analysis.budget.snapshot()["limits"]},
+        "artifact": {"analysis_id": "dep-baseline"},
+    }
+    impacts = [{"impact_id": "new-impact", "terminal_edge_id": added_edge.id}]
+
+    diff = service._diff_graphs(
+        analysis,
+        baseline,
+        impacts,
+        {"budget_exhausted": True},
+        DependencyTarget("dataset", root.identifiers, root.display_name, root.id),
+    )
+
+    assert diff["added_edges"] == [added_edge.id]
+    assert diff["changed_edges"] == [
+        {
+            "edge_id": shared_edge.id,
+            "from_coverage": "partial",
+            "to_coverage": "verified",
+        }
+    ]
+    # An edge directly adjacent to a locally-truncated subject is always
+    # ambiguous (edge-actual-removal), even when its far endpoint happens to
+    # be independently reached elsewhere in the current graph -- truncation
+    # could have cut that specific edge regardless.  An edge with neither
+    # endpoint reachable from the truncated frontier at all
+    # (edge-unrelated-removal) is unambiguous.
+    assert diff["removed_edges"] == [
+        {
+            "edge_id": "edge-actual-removal",
+            "possibly_budget_truncated": True,
+        },
+        {
+            "edge_id": "edge-truncated-omission",
+            "possibly_budget_truncated": True,
+        },
+        {
+            "edge_id": "edge-unrelated-removal",
+            "possibly_budget_truncated": False,
+        },
+    ]
+    assert diff["newly_introduced_impacts"] == ["new-impact"]
+    assert diff["compared_against"] == "dep-baseline"
+    assert diff["comparable"] is True
+
+
+def test_artifact_diff_convergent_path_marks_frontier_edge_but_stops_propagation():
+    """A removed edge directly incident to a locally-truncated subject stays
+    possibly-truncated even when its far endpoint is independently confirmed
+    reached via another, unaffected path -- but propagation must not
+    continue past that independently-confirmed node."""
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    root = service._add_node(analysis, "dataset", "root", {"rid": "root"})
+    anchor = service._add_node(analysis, "schedule", "anchor", {"rid": "anchor"})
+    convergent = service._add_node(
+        analysis, "schedule", "convergent", {"rid": "convergent"}
+    )
+    anchor_edge = service._add_edge(
+        analysis,
+        anchor.id,
+        convergent.id,
+        "schedule-produces-resource",
+        [],
+        coverage="verified",
+    )
+    service._add_gap(
+        analysis,
+        root.id,
+        "schedule-reverse-index",
+        "budget-exhausted",
+        "budget-exhausted",
+        "Schedule discovery stopped at the local subject budget",
+    )
+    beyond_node = {
+        "id": "node-beyond",
+        "kind": "schedule",
+        "identifiers": {"rid": "beyond"},
+    }
+    baseline = {
+        "target": {
+            "kind": "dataset",
+            "identifiers": root.identifiers,
+            "node_id": root.id,
+        },
+        "read_contexts": [
+            {
+                "ontology_rid": analysis.read_context.ontology_rid,
+                "requested_branch": analysis.read_context.requested_branch,
+            }
+        ],
+        "graph": {
+            "nodes": [
+                service._serialize(root),
+                service._serialize(anchor),
+                service._serialize(convergent),
+                beyond_node,
+            ],
+            "edges": [
+                {
+                    "id": anchor_edge.id,
+                    "source": anchor.id,
+                    "target": convergent.id,
+                    "coverage": "verified",
+                },
+                {
+                    "id": "edge-frontier-to-convergent",
+                    "source": root.id,
+                    "target": convergent.id,
+                    "coverage": "verified",
+                },
+                {
+                    "id": "edge-beyond-convergent",
+                    "source": convergent.id,
+                    "target": beyond_node["id"],
+                    "coverage": "verified",
+                },
+            ],
+        },
+        "budget": {"limits": analysis.budget.snapshot()["limits"]},
+        "artifact": {"analysis_id": "dep-baseline"},
+    }
+
+    diff = service._diff_graphs(
+        analysis,
+        baseline,
+        [],
+        {"budget_exhausted": True},
+        DependencyTarget("dataset", root.identifiers, root.display_name, root.id),
+    )
+
+    removed = {
+        item["edge_id"]: item["possibly_budget_truncated"]
+        for item in diff["removed_edges"]
+    }
+    assert removed == {
+        "edge-frontier-to-convergent": True,
+        "edge-beyond-convergent": False,
+    }
+
+
+def test_agent_block_exposes_stable_schema_status_and_null_diff():
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    node = service._add_node(
+        analysis, "object-type", "Employee", {"object_type": "Employee"}, True
+    )
+    target = DependencyTarget(
+        "object-type", node.identifiers, node.display_name, node.id
+    )
+    classification = service._classify_agent_results(analysis, [])
+
+    agent = service._build_agent_block(
+        analysis,
+        target,
+        None,
+        None,
+        "absent",
+        [],
+        classification,
+        None,
+    )
+
+    assert agent["schema_version"] == AGENT_SCHEMA_VERSION == "dependency-agent-v1"
+    assert agent["status"] == "clean"
+    assert agent["diff"] is None
+    assert set(agent["verification"]) == {
+        "must_verify_before_merge",
+        "should_verify_before_deploy",
+        "unsupported_manual_surfaces",
+    }
+
+
+@pytest.mark.parametrize(
+    ("direction", "causal_source_is_middle"),
+    [("downstream", True), ("upstream", False)],
+)
+def test_one_way_paths_continue_through_adjacent_prefix(
+    direction, causal_source_is_middle
+):
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context(max_depth=2)
+    root = service._add_node(analysis, "project", "root", {"rid": "root"})
+    middle = service._add_node(analysis, "dataset", "middle", {"rid": "middle"})
+    leaf = service._add_node(analysis, "schedule", "leaf", {"rid": "leaf"})
+    service._add_edge(analysis, root.id, middle.id, "container-member", [])
+    source, target = (
+        (middle.id, leaf.id) if causal_source_is_middle else (leaf.id, middle.id)
+    )
+    service._add_edge(
+        analysis, source, target, "schedule-consumes-resource", []
+    )
+
+    paths = service._derive_paths(analysis, root.id, direction)
+
+    assert [path["related_node_id"] for path in paths] == [leaf.id]
+    assert paths[0]["direction"] == direction
+    assert service._overall_direction_values(["adjacent", direction]) == direction
+    assert service._overall_direction_values(["upstream", "downstream"]) == "adjacent"
+
+
+def test_zero_impact_non_budget_gap_is_incomplete_and_needs_verification():
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    node = service._add_node(
+        analysis, "object-type", "Employee", {"object_type": "Employee"}, True
+    )
+    record = service._coverage_record(
+        analysis, "object-type", "frontier-collection", node.id
+    )
+    service._finish_coverage(
+        record, "inaccessible", reason="permission-denied", attempted=True
+    )
+    gap = service._add_gap(
+        analysis,
+        node.id,
+        "frontier-collection",
+        "inaccessible",
+        "permission-denied",
+        "The dependency surface is inaccessible",
+    )
+
+    classification = service._classify_agent_results(analysis, [])
+    agent = service._build_agent_block(
+        analysis,
+        DependencyTarget("object-type", node.identifiers, node.display_name, node.id),
+        None,
+        None,
+        "absent",
+        [],
+        classification,
+        None,
+    )
+
+    assert classification["coverage_completeness"]["complete"] is False
+    assert classification["coverage_completeness"]["incomplete_gap_ids"] == [gap.id]
+    must = classification["verification"]["must_verify_before_merge"]
+    assert must and must[0]["reason"] == "coverage-gap"
+    assert must[0]["related_gap_ids"] == [gap.id]
+    assert agent["status"] == "needs-verification"
+
+
+def test_blast_groups_and_score_ignore_change_aware_impact_category():
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    action = service._add_node(
+        analysis,
+        "action-type",
+        "Promote",
+        {"ontology_rid": "ontology", "action_type": "Promote"},
+        True,
+    )
+    employee = service._add_node(
+        analysis, "object-type", "Employee", {"object_type": "Employee"}
+    )
+    service._add_edge(
+        analysis, action.id, employee.id, "action-affects-object", []
+    )
+    ranked = service._rank_paths(
+        analysis, service._derive_paths(analysis, action.id, "downstream"), None
+    )
+    target = DependencyTarget(
+        "action-type", action.identifiers, action.display_name, action.id
+    )
+
+    no_change_impacts = service._dedupe_ranked_impacts(analysis, ranked, None)
+    changed_impacts = service._dedupe_ranked_impacts(
+        analysis, ranked, "required-to-optional"
+    )
+    no_change = service._build_agent_block(
+        analysis,
+        target,
+        None,
+        None,
+        "absent",
+        no_change_impacts,
+        service._classify_agent_results(analysis, no_change_impacts),
+        None,
+    )
+    changed = service._build_agent_block(
+        analysis,
+        target,
+        None,
+        "required-to-optional",
+        "explicit",
+        changed_impacts,
+        service._classify_agent_results(analysis, changed_impacts),
+        None,
+    )
+
+    assert no_change["blast_radius"] == changed["blast_radius"]
+    assert (
+        no_change_impacts[0]["impact_category"]
+        != changed_impacts[0]["impact_category"]
+    )
+    assert no_change["release_risk"]["score"] is None
+    assert changed["release_risk"]["score"] is not None
+
+
+def test_query_contract_projection_resolves_recursive_scc_output_without_sdk_calls():
+    client = Mock()
+    service = DependencyGraphService(client=client)
+    analysis = context(max_depth=10)
+    query = _recursive_query()
+    query_node = service._add_node(
+        analysis,
+        "query-type",
+        query.api_name,
+        {"ontology_rid": "ontology", "query_type": query.api_name},
+    )
+    analysis.caches[
+        ("query-metadata", "ontology", "feature", query.api_name)
+    ] = (query, "operation")
+
+    contracts = service._project_action_query_contracts(analysis, [])
+
+    client.assert_not_called()
+    outputs = contracts["queries"][0]["outputs"]
+    assert [(output["data_type"], output["name"]) for output in outputs] == [
+        ("object-type", "X"),
+        ("object-type", "Y"),
+    ]
+    assert all("typeReferences" in output["locator"] for output in outputs)
+    cached = analysis.caches[("query-reference-closure", query_node.id)]
+    assert cached["output"]["sccs"] == [["A", "B"]]
+
+
+def test_diff_comparability_requires_same_target_and_all_budget_limits():
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    root = service._add_node(
+        analysis, "dataset", "root", {"resource_rid": "root"}, True
+    )
+    target = DependencyTarget("dataset", root.identifiers, root.display_name, root.id)
+    baseline = {
+        "target": {
+            "kind": target.kind,
+            "identifiers": target.identifiers,
+            "node_id": target.node_id,
+        },
+        "read_contexts": [
+            {
+                "ontology_rid": analysis.read_context.ontology_rid,
+                "requested_branch": analysis.read_context.requested_branch,
+            }
+        ],
+        "graph": {"nodes": [service._serialize(root)], "edges": []},
+        "budget": {"limits": analysis.budget.snapshot()["limits"]},
+    }
+
+    assert service._diff_graphs(
+        analysis, baseline, [], {"budget_exhausted": False}, target
+    )["comparable"] is True
+    different_target = {**baseline, "target": {**baseline["target"], "kind": "table"}}
+    assert service._diff_graphs(
+        analysis, different_target, [], {"budget_exhausted": False}, target
+    )["comparable"] is False
+    different_budget = {
+        **baseline,
+        "budget": {
+            "limits": {**baseline["budget"]["limits"], "depth": 99}
+        },
+    }
+    assert service._diff_graphs(
+        analysis, different_budget, [], {"budget_exhausted": False}, target
+    )["comparable"] is False
+
+
+def test_removed_edge_budget_uncertainty_propagates_beyond_frontier():
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context()
+    root = service._add_node(
+        analysis, "dataset", "root", {"resource_rid": "root"}, True
+    )
+    frontier = service._add_node(
+        analysis, "schedule", "frontier", {"schedule_rid": "frontier"}
+    )
+    shared = service._add_edge(
+        analysis, root.id, frontier.id, "schedule-consumes-resource", []
+    )
+    service._add_gap(
+        analysis,
+        frontier.id,
+        "graph-discovery",
+        "budget-exhausted",
+        "budget-exhausted",
+        "Discovery stopped at frontier",
+    )
+    analysis.caches[("requested-direction",)] = "downstream"
+    omitted_one = {
+        "id": "node-omitted-one",
+        "kind": "schedule",
+        "identifiers": {"schedule_rid": "omitted-one"},
+    }
+    omitted_two = {
+        "id": "node-omitted-two",
+        "kind": "schedule",
+        "identifiers": {"schedule_rid": "omitted-two"},
+    }
+    target = DependencyTarget("dataset", root.identifiers, root.display_name, root.id)
+    baseline = {
+        "target": {
+            "kind": target.kind,
+            "identifiers": target.identifiers,
+            "node_id": target.node_id,
+        },
+        "read_contexts": [
+            {
+                "ontology_rid": analysis.read_context.ontology_rid,
+                "requested_branch": analysis.read_context.requested_branch,
+            }
+        ],
+        "graph": {
+            "nodes": [
+                service._serialize(root),
+                service._serialize(frontier),
+                omitted_one,
+                omitted_two,
+            ],
+            "edges": [
+                service._serialize(shared),
+                {
+                    "id": "edge-frontier-one",
+                    "source": frontier.id,
+                    "target": omitted_one["id"],
+                    "traversal_class": "dependency-flow",
+                    "coverage": "verified",
+                },
+                {
+                    "id": "edge-one-two",
+                    "source": omitted_one["id"],
+                    "target": omitted_two["id"],
+                    "traversal_class": "dependency-flow",
+                    "coverage": "verified",
+                },
+            ],
+        },
+        "budget": {"limits": analysis.budget.snapshot()["limits"]},
+    }
+
+    truncated = service._diff_graphs(
+        analysis, baseline, [], {"budget_exhausted": True}, target
+    )
+    complete = service._diff_graphs(
+        analysis, baseline, [], {"budget_exhausted": False}, target
+    )
+
+    assert truncated["removed_edges"] == [
+        {"edge_id": "edge-frontier-one", "possibly_budget_truncated": True},
+        {"edge_id": "edge-one-two", "possibly_budget_truncated": True},
+    ]
+    assert all(
+        item["possibly_budget_truncated"] is False
+        for item in complete["removed_edges"]
+    )
+
+
+def test_global_budget_exhaustion_terminalizes_every_queued_branch_not_just_current():
+    """A global (non-depth) BudgetExhausted must terminalize every branch
+    still sitting in the BFS queue, not only the branch being processed when
+    it fired -- otherwise a sibling branch that was never dequeued carries no
+    coverage/gap record at all, and `_diff_graphs`'s budget-truncation
+    propagation has no seed to expand from beneath it."""
+    service = DependencyGraphService(client=SimpleNamespace())
+    analysis = context(max_depth=3)
+    root = service._add_node(
+        analysis, "generic-resource", "root", {"resource_rid": "root"}, True
+    )
+    branch_one = service._add_node(
+        analysis, "generic-resource", "branch-one", {"resource_rid": "branch-one"}
+    )
+    branch_two = service._add_node(
+        analysis, "generic-resource", "branch-two", {"resource_rid": "branch-two"}
+    )
+    service._add_edge(analysis, root.id, branch_one.id, "container-member", [])
+    service._add_edge(analysis, root.id, branch_two.id, "container-member", [])
+
+    processed: list[str] = []
+
+    def collect(target, active_context):
+        if target.node_id == root.id:
+            return
+        processed.append(target.node_id)
+        if len(processed) == 1:
+            raise BudgetExhausted("requests", active_context.budget.snapshot())
+        raise AssertionError(
+            "the second queued branch must never be dequeued after a global "
+            "budget exhaustion stops the BFS"
+        )
+
+    service._collect_target = collect
+    service._discover_bfs(
+        DependencyTarget("generic-resource", root.identifiers, "root", root.id),
+        analysis,
+        "both",
+    )
+
+    assert len(processed) == 1
+    exhausted_id = processed[0]
+    unvisited_id = branch_two.id if exhausted_id == branch_one.id else branch_one.id
+
+    def is_budget_exhausted(node_id: str) -> bool:
+        return any(
+            gap.target == node_id and gap.coverage == "budget-exhausted"
+            for gap in analysis.gaps.values()
+        ) or any(
+            record.subject_node_id == node_id and record.status == "budget-exhausted"
+            for record in analysis.coverage_records.values()
+        )
+
+    assert is_budget_exhausted(exhausted_id)
+    assert is_budget_exhausted(unvisited_id), (
+        "the never-dequeued sibling branch must still be terminalized as "
+        "budget-exhausted"
+    )
+
+    # The queue-wide terminalization must also seed the diff's budget-
+    # truncation propagation for edges two hops beneath the unvisited branch.
+    omitted_one = {
+        "id": "node-omitted-one",
+        "kind": "generic-resource",
+        "identifiers": {"resource_rid": "omitted-one"},
+    }
+    omitted_two = {
+        "id": "node-omitted-two",
+        "kind": "generic-resource",
+        "identifiers": {"resource_rid": "omitted-two"},
+    }
+    target = DependencyTarget("generic-resource", root.identifiers, "root", root.id)
+    baseline = {
+        "target": {
+            "kind": target.kind,
+            "identifiers": target.identifiers,
+            "node_id": target.node_id,
+        },
+        "read_contexts": [
+            {
+                "ontology_rid": analysis.read_context.ontology_rid,
+                "requested_branch": analysis.read_context.requested_branch,
+            }
+        ],
+        "graph": {
+            "nodes": [
+                service._serialize(node) for node in analysis.nodes.values()
+            ]
+            + [omitted_one, omitted_two],
+            "edges": [
+                service._serialize(edge) for edge in analysis.edges.values()
+            ]
+            + [
+                {
+                    "id": "edge-unvisited-one",
+                    "source": unvisited_id,
+                    "target": omitted_one["id"],
+                    "traversal_class": "adjacent-structural",
+                    "coverage": "verified",
+                },
+                {
+                    "id": "edge-one-two",
+                    "source": omitted_one["id"],
+                    "target": omitted_two["id"],
+                    "traversal_class": "adjacent-structural",
+                    "coverage": "verified",
+                },
+            ],
+        },
+        "budget": {"limits": analysis.budget.snapshot()["limits"]},
+    }
+
+    diff = service._diff_graphs(
+        analysis, baseline, [], {"budget_exhausted": True}, target
+    )
+
+    removed = {item["edge_id"]: item["possibly_budget_truncated"] for item in diff["removed_edges"]}
+    assert removed["edge-unvisited-one"] is True
+    assert removed["edge-one-two"] is True
