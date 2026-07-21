@@ -16,6 +16,7 @@ from importlib.metadata import PackageNotFoundError, version
 from time import monotonic
 from typing import Any, Callable, Iterable, Mapping, Optional, Sequence
 
+import requests
 from foundry_sdk import FoundryClient
 from foundry_sdk import _errors as sdk_errors
 
@@ -219,6 +220,10 @@ class OperationProvenance:
     request_timeout_seconds: int
     known_limitations: tuple[dict[str, Any], ...] = ()
     transport: str = "sdk"
+    acp_id: Optional[str] = None
+    http_verb: Optional[str] = None
+    path: Optional[str] = None
+    contract_pins: Optional[dict[str, str]] = None
 
 
 @dataclass(frozen=True)
@@ -297,6 +302,9 @@ class CoverageRecord:
     evidence_ids: list[str] = field(default_factory=list)
     error_id: Optional[str] = None
     reason: Optional[str] = None
+    operation: Optional[str] = None
+    transport: str = "sdk"
+    empty_is_inconclusive: bool = False
 
     @property
     def id(self) -> str:
@@ -496,6 +504,7 @@ class AnalysisContext:
     gaps: dict[str, CoverageGap] = field(default_factory=dict)
     errors: list[dict[str, Any]] = field(default_factory=list)
     caches: dict[tuple[Any, ...], Any] = field(default_factory=dict)
+    internal_budget: DiscoveryBudget = field(default_factory=DiscoveryBudget)
 
     @classmethod
     def create(
@@ -507,6 +516,7 @@ class AnalysisContext:
         dataset_branch: Optional[str] = None,
         budget: Optional[DiscoveryBudget] = None,
         request_timeout_seconds: float = 30.0,
+        internal_budget: Optional[DiscoveryBudget] = None,
     ) -> "AnalysisContext":
         sdk_version = _sdk_version()
         host_fingerprint = (
@@ -536,7 +546,12 @@ class AnalysisContext:
             requested_branch,
             dataset_branch,
         )
-        return cls(read_context, budget or DiscoveryBudget(), request_timeout_seconds)
+        return cls(
+            read_context,
+            budget or DiscoveryBudget(),
+            request_timeout_seconds,
+            internal_budget=internal_budget or DiscoveryBudget(),
+        )
 
 
 RELATION_KINDS: dict[str, tuple[str, str]] = {
@@ -550,6 +565,7 @@ RELATION_KINDS: dict[str, tuple[str, str]] = {
     "run-submitted-build": ("dependency-flow", "source_to_target"),
     "schedule-run": ("dependency-flow", "source_to_target"),
     "build-produced-output": ("dependency-flow", "source_to_target"),
+    "column-backs-property": ("dependency-flow", "source_to_target"),
     "declared-link": ("adjacent-structural", "declared_source_to_target"),
     "container-member": ("adjacent-structural", "container_to_member"),
     "peer": ("adjacent-structural", "peer_canonical"),
@@ -566,6 +582,7 @@ STATIC_SURFACES = (
     "application-internals",
     "workshop-internals",
     "compass-metadata",
+    "property-column-mapping",
 )
 
 # --- Agent-native impact model (AU2-AU7) -----------------------------------
@@ -605,6 +622,7 @@ IMPACT_CATEGORY_BASE: dict[str, str] = {
     "run-submitted-build": "workflow-break",
     "schedule-run": "workflow-break",
     "build-produced-output": "workflow-break",
+    "column-backs-property": "schema-break",
     "declared-link": "schema-break",
     "container-member": "schema-break",
     "peer": "semantic-break",
@@ -671,30 +689,38 @@ MATRIX_GAPS: dict[str, dict[str, str]] = {
         "application-internals": "unsupported-application-internals",
         "workshop-internals": "unsupported-workshop-internals",
         "compass-metadata": "ontology-compass-mapping-unavailable",
+        "property-column-mapping": "unsupported-property-column-mapping",
     },
     "property": {
         "dataset-orchestration": "dataset-column-lineage-unavailable",
         "application-internals": "unsupported-application-internals",
         "workshop-internals": "unsupported-workshop-internals",
         "compass-metadata": "ontology-compass-mapping-unavailable",
+        # U3a registers this surface, but U4 owns the ACP-04 collector. Keep
+        # it terminal and non-blocking until that collector lands rather than
+        # promising coverage that no Phase A U2a/U3a code path can complete.
+        "property-column-mapping": "unsupported-property-column-mapping",
     },
     "link-type": {
         "dataset-orchestration": "unsupported-dataset-orchestration",
         "application-internals": "unsupported-application-internals",
         "workshop-internals": "unsupported-workshop-internals",
         "compass-metadata": "ontology-compass-mapping-unavailable",
+        "property-column-mapping": "unsupported-property-column-mapping",
     },
     "action-type": {
         "dataset-orchestration": "unsupported-dataset-orchestration",
         "application-internals": "unsupported-application-internals",
         "workshop-internals": "unsupported-workshop-internals",
         "compass-metadata": "ontology-compass-mapping-unavailable",
+        "property-column-mapping": "unsupported-property-column-mapping",
     },
     "query-type": {
         "dataset-orchestration": "unsupported-dataset-orchestration",
         "application-internals": "unsupported-application-internals",
         "workshop-internals": "unsupported-workshop-internals",
         "compass-metadata": "ontology-compass-mapping-unavailable",
+        "property-column-mapping": "unsupported-property-column-mapping",
     },
     "dataset": {
         "ontology-structure-backing": "ontology-backing-mapping-unavailable",
@@ -702,6 +728,7 @@ MATRIX_GAPS: dict[str, dict[str, str]] = {
         "query-related-function-metadata": "reverse-query-mapping-unavailable",
         "application-internals": "unsupported-application-internals",
         "workshop-internals": "unsupported-workshop-internals",
+        "property-column-mapping": "unsupported-property-column-mapping",
     },
     "third-party-application": {
         surface: "unsupported-application-internals"
@@ -747,6 +774,14 @@ def classify_exception(error: BaseException) -> ClassifiedFailure:
         if getattr(candidate, "name", None) == "BranchNotFound":
             return ClassifiedFailure("branch-not-found", "unresolved", False)
         mapping = (
+            (
+                (requests.Timeout,),
+                ClassifiedFailure("timeout", "partial", True),
+            ),
+            (
+                (requests.ConnectionError,),
+                ClassifiedFailure("connection", "partial", True),
+            ),
             (
                 (sdk_errors.UnauthorizedError, sdk_errors.NotAuthenticated),
                 ClassifiedFailure("authentication", "inaccessible", False),
@@ -825,6 +860,7 @@ class DependencyGraphService(BaseService):
         dataset_branch: Optional[str] = None,
         budget: Optional[DiscoveryBudget] = None,
         request_timeout_seconds: float = 30.0,
+        internal_budget: Optional[DiscoveryBudget] = None,
     ) -> AnalysisContext:
         return AnalysisContext.create(
             self.profile or "default",
@@ -834,6 +870,7 @@ class DependencyGraphService(BaseService):
             dataset_branch,
             budget,
             request_timeout_seconds,
+            internal_budget,
         )
 
     def resolve_object_type(
@@ -1454,11 +1491,21 @@ class DependencyGraphService(BaseService):
             str(key): str(value) for key, value in sorted(identifiers.items())
         }
         identity = normalized
-        if "resource_rid" in normalized:
+        if kind == "dataset-column":
+            dataset_rid = normalized.get("dataset_rid")
+            column = normalized.get("column")
+            if not dataset_rid or not column:
+                raise ValueError("dataset-column requires dataset_rid and column")
+            node_id = f"{dataset_rid}#{column}"
+        elif "resource_rid" in normalized:
             identity = {"resource_rid": normalized["resource_rid"]}
-        node_id = _stable_id(
-            "node", kind, *[f"{key}={value}" for key, value in identity.items()]
-        )
+            node_id = _stable_id(
+                "node", kind, *[f"{key}={value}" for key, value in identity.items()]
+            )
+        else:
+            node_id = _stable_id(
+                "node", kind, *[f"{key}={value}" for key, value in identity.items()]
+            )
         existing = context.nodes.get(node_id)
         if existing is not None:
             if is_target and not existing.is_target:
@@ -1548,6 +1595,9 @@ class DependencyGraphService(BaseService):
         *,
         parent_record_id: Optional[str] = None,
         applicability_evidence_id: Optional[str] = None,
+        operation: Optional[str] = None,
+        transport: str = "sdk",
+        empty_is_inconclusive: bool = False,
     ) -> CoverageRecord:
         record = CoverageRecord(
             target_kind,
@@ -1556,9 +1606,23 @@ class DependencyGraphService(BaseService):
             context.read_context.id,
             parent_record_id,
             applicability_evidence_id,
+            operation=operation,
+            transport=transport,
+            empty_is_inconclusive=empty_is_inconclusive,
         )
         existing = context.coverage_records.get(record.id)
         if existing is not None:
+            if operation is not None:
+                if existing.operation not in {None, operation}:
+                    raise ValueError("conflicting coverage operation metadata")
+                existing.operation = operation
+            if transport != "sdk":
+                if existing.transport not in {"sdk", transport}:
+                    raise ValueError("conflicting coverage transport metadata")
+                existing.transport = transport
+            existing.empty_is_inconclusive = (
+                existing.empty_is_inconclusive or empty_is_inconclusive
+            )
             return existing
         context.coverage_records[record.id] = record
         return record
@@ -1576,12 +1640,17 @@ class DependencyGraphService(BaseService):
             "covered",
             "covered-empty",
             "partial",
+            "inconclusive",
             "inaccessible",
             "unsupported",
             "unresolved",
             "budget-exhausted",
         }:
             raise ValueError(f"invalid coverage status: {status}")
+        if status == "covered-empty" and (
+            record.transport != "sdk" or record.empty_is_inconclusive
+        ):
+            raise ValueError("internal coverage cannot be covered-empty")
         record.status = status
         record.attempted = attempted
         record.complete = True
@@ -4562,6 +4631,7 @@ class DependencyGraphService(BaseService):
         confidence_penalty = {
             "verified": 0,
             "partial": 1,
+            "inconclusive": 2,
             "unresolved": 2,
             "unsupported": 3,
         }
@@ -4634,6 +4704,8 @@ class DependencyGraphService(BaseService):
                         if coverage_score == 0
                         else "unsupported"
                         if coverage_score == 3
+                        else "inconclusive"
+                        if "inconclusive" in path_coverages
                         else "partial"
                     ),
                 }
