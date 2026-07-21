@@ -218,6 +218,7 @@ class OperationProvenance:
     preview_argument: ArgumentObservation
     request_timeout_seconds: int
     known_limitations: tuple[dict[str, Any], ...] = ()
+    transport: str = "sdk"
 
 
 @dataclass(frozen=True)
@@ -1330,76 +1331,17 @@ class DependencyGraphService(BaseService):
         fatal: bool = False,
         known_limitations: Sequence[dict[str, Any]] = (),
     ) -> tuple[Any, str]:
-        spec = SDK_OPERATION_SPECS.get(operation)
-        if spec is None:
-            raise ValueError(f"unregistered SDK operation: {operation}")
-        supplied = dict(kwargs)
-        if "branch" in supplied and not spec.branch:
-            raise ValueError(f"{operation} does not accept branch")
-        if "preview" in supplied and not spec.preview:
-            raise ValueError(f"{operation} does not accept preview")
-        timeout = context.budget.request_timeout(
-            context.configured_request_timeout_seconds
-        )
-        context.budget.charge("requests")
-        supplied["request_timeout"] = timeout
-        branch = self._argument_observation(spec.branch, supplied, "branch")
-        preview = self._argument_observation(spec.preview, supplied, "preview")
-        invoked_at = _utc_now()
-        operation_id = _stable_id(
-            "operation",
-            context.read_context.id,
+        from .dependency_providers import SdkProvider
+
+        result = SdkProvider(call).invoke(
+            context,
             operation,
-            len(context.operation_provenance),
-            invoked_at,
+            kwargs,
+            target=target,
+            fatal=fatal,
+            known_limitations=known_limitations,
         )
-        limitations = tuple(dict(value) for value in known_limitations)
-        try:
-            response = call(**supplied)
-        except Exception as error:
-            observed_at = _utc_now()
-            context.operation_provenance[operation_id] = OperationProvenance(
-                operation_id,
-                context.read_context.id,
-                spec.namespace,
-                spec.method,
-                spec.capability_ids,
-                context.read_context.invocation_sdk_version,
-                invoked_at,
-                observed_at,
-                branch,
-                preview,
-                timeout,
-                limitations,
-            )
-            classified = classify_exception(error)
-            if fatal:
-                if not _is_expected_collection_failure(error):
-                    raise
-                raise DependencyFatalError(
-                    classified.error_class,
-                    target,
-                    operation,
-                    str(error),
-                    classified.retryable,
-                    context.read_context.id,
-                ) from error
-            raise
-        context.operation_provenance[operation_id] = OperationProvenance(
-            operation_id,
-            context.read_context.id,
-            spec.namespace,
-            spec.method,
-            spec.capability_ids,
-            context.read_context.invocation_sdk_version,
-            invoked_at,
-            _utc_now(),
-            branch,
-            preview,
-            timeout,
-            limitations,
-        )
-        return response, operation_id
+        return result.payload, result.operation_provenance_id
 
     @staticmethod
     def _argument_observation(
