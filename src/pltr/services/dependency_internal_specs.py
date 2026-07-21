@@ -48,7 +48,7 @@ ACP_OPERATION_SPECS: dict[str, InternalOperationSpec] = {
         verb="GET",
         path=(
             "/api/v2/ontologies/{ontology}/objectTypes/{object_type}"
-            "?includeDatasources=true"
+            "?includeDatasources=true&preview=true"
         ),
         coverage_surface="property-column-mapping",
         target_kind="property",

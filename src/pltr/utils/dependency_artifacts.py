@@ -18,6 +18,7 @@ SERIALIZED_COVERAGE_STATUSES = frozenset(
         "covered-empty",
         "partial",
         "inconclusive",
+        "token-expired",
         "inaccessible",
         "unsupported",
         "unresolved",

@@ -842,11 +842,15 @@ class DependencyGraphService(BaseService):
     """Resolve targets and compose bounded collectors into one canonical graph."""
 
     def __init__(
-        self, profile: Optional[str] = None, client: Optional[FoundryClient] = None
+        self,
+        profile: Optional[str] = None,
+        client: Optional[FoundryClient] = None,
+        conjure_provider: Optional[Any] = None,
     ):
         super().__init__(profile)
         if client is not None:
             self._client = client
+        self._conjure_provider = conjure_provider
 
     def _get_service(self) -> FoundryClient:
         return self.client
@@ -1641,6 +1645,7 @@ class DependencyGraphService(BaseService):
             "covered-empty",
             "partial",
             "inconclusive",
+            "token-expired",
             "inaccessible",
             "unsupported",
             "unresolved",
@@ -1705,6 +1710,12 @@ class DependencyGraphService(BaseService):
                 context, target.kind, surface, target.node_id
             )
             reason = MATRIX_GAPS.get(target.kind, {}).get(surface)
+            if (
+                self._conjure_provider is not None
+                and target.kind in {"object-type", "property"}
+                and surface == "property-column-mapping"
+            ):
+                reason = None
             if reason:
                 self._finish_coverage(
                     record,
@@ -2163,8 +2174,222 @@ class DependencyGraphService(BaseService):
                 "covered" if evidence_ids else "covered-empty",
                 evidence_ids=evidence_ids,
             )
+        if target.kind in {"object-type", "property"}:
+            self._collect_property_column_mappings(target, context, metadata)
         self._collect_reverse_actions(target, context, ontology_rid)
         self._collect_reverse_queries(target, context, ontology_rid)
+
+    def _collect_property_column_mappings(
+        self,
+        target: DependencyTarget,
+        context: AnalysisContext,
+        metadata: Any,
+    ) -> None:
+        """Augment SDK ontology structure with ACP-04 physical column edges."""
+
+        if self._conjure_provider is None:
+            return
+        assert target.node_id is not None
+        from .dependency_internal_specs import ACP_OPERATION_SPECS
+        from .foundry_internal_client import TokenExpiredError
+
+        spec = ACP_OPERATION_SPECS["ACP-04"]
+        record = self._coverage_record(
+            context,
+            target.kind,
+            spec.coverage_surface,
+            target.node_id,
+            operation=spec.acp_id,
+            transport=spec.transport,
+            empty_is_inconclusive=spec.empty_is_inconclusive,
+        )
+        path = spec.path.format(
+            ontology=target.identifiers["ontology_rid"],
+            object_type=target.identifiers["object_type"],
+        )
+        cache_key = (
+            spec.acp_id,
+            target.identifiers["ontology_rid"],
+            target.identifiers["object_type"],
+        )
+        try:
+            cached = context.caches.get(cache_key)
+            if isinstance(cached, BaseException):
+                raise cached
+            if cached is None:
+                result = self._conjure_provider.invoke(
+                    context,
+                    spec.acp_id,
+                    spec.verb,
+                    path,
+                    None,
+                    target=target.node_id,
+                )
+                context.caches[cache_key] = result
+            else:
+                result = cached
+        except TokenExpiredError as error:
+            context.caches[cache_key] = error
+            self._finish_coverage(record, "token-expired", reason="token-expired")
+            self._add_gap(
+                context,
+                target.node_id,
+                spec.coverage_surface,
+                "token-expired",
+                "token-expired",
+                str(error),
+                operation=spec.acp_id,
+                locator=path,
+            )
+            return
+
+        shape_drift_payload = (
+            result.coverage_status == "inconclusive"
+            and result.error_class == "response-shape-drift"
+            and isinstance(result.payload, Mapping)
+        )
+        if result.coverage_status != "covered" and not shape_drift_payload:
+            reason = (
+                result.error_class or f"{result.result_semantics}-internal-response"
+            )
+            self._finish_coverage(record, result.coverage_status, reason=reason)
+            if not self._has_reported_gap(
+                context, target.node_id, spec.coverage_surface
+            ):
+                self._add_gap(
+                    context,
+                    target.node_id,
+                    spec.coverage_surface,
+                    result.coverage_status,
+                    reason,
+                    f"{spec.acp_id} returned {result.result_semantics}; "
+                    "absence could not be proven",
+                    retryable=result.retryable,
+                    operation=spec.acp_id,
+                    locator=path,
+                )
+            return
+
+        payload = result.payload
+        datasources = (
+            payload.get("datasources", []) if isinstance(payload, Mapping) else []
+        )
+        sdk_properties = getattr(
+            getattr(metadata, "object_type", None), "properties", {}
+        )
+        property_names = (
+            (target.identifiers["property"],)
+            if target.kind == "property"
+            else tuple(sorted(str(name) for name in sdk_properties))
+        )
+        evidence_ids: list[str] = []
+        shape_drift_locators: list[str] = []
+        for index, datasource in enumerate(datasources):
+            if not isinstance(datasource, Mapping):
+                continue
+            definition = datasource.get("definition")
+            if (
+                not isinstance(definition, Mapping)
+                or definition.get("type") != "dataset"
+            ):
+                continue
+            dataset_rid = definition.get("datasetRid")
+            property_mapping = definition.get("propertyMapping")
+            base_locator = f"datasources[{index}].definition"
+            if not isinstance(dataset_rid, str) or not dataset_rid:
+                shape_drift_locators.append(f"{base_locator}.datasetRid")
+                continue
+            if not isinstance(property_mapping, Mapping):
+                shape_drift_locators.append(f"{base_locator}.propertyMapping")
+                continue
+            for property_name in property_names:
+                mapping = property_mapping.get(property_name)
+                if mapping is None:
+                    continue
+                locator = f"{base_locator}.propertyMapping.{property_name}"
+                if (
+                    not isinstance(mapping, Mapping)
+                    or mapping.get("type") != "column"
+                    or not isinstance(mapping.get("column"), str)
+                    or not mapping["column"]
+                ):
+                    shape_drift_locators.append(locator)
+                    continue
+                property_node = (
+                    context.nodes[target.node_id]
+                    if target.kind == "property"
+                    else self._add_node(
+                        context,
+                        "property",
+                        f"{target.identifiers['object_type']}.{property_name}",
+                        {
+                            "ontology_rid": target.identifiers["ontology_rid"],
+                            "object_type": target.identifiers["object_type"],
+                            "property": property_name,
+                        },
+                    )
+                )
+                column = str(mapping["column"])
+                column_node = self._add_node(
+                    context,
+                    "dataset-column",
+                    column,
+                    {"dataset_rid": dataset_rid, "column": column},
+                )
+                evidence = self._add_evidence(
+                    context,
+                    result.operation_provenance_id,
+                    locator,
+                    locator,
+                    mapping,
+                    discriminator="column",
+                )
+                evidence_ids.append(evidence.id)
+                self._add_edge(
+                    context,
+                    column_node.id,
+                    property_node.id,
+                    "column-backs-property",
+                    [evidence.id],
+                )
+
+        if shape_drift_locators:
+            self._finish_coverage(
+                record,
+                "inconclusive",
+                evidence_ids=evidence_ids,
+                reason="response-shape-drift",
+            )
+            for locator in shape_drift_locators:
+                self._add_gap(
+                    context,
+                    target.node_id,
+                    spec.coverage_surface,
+                    "inconclusive",
+                    "response-shape-drift",
+                    "ACP-04 dataset mapping omitted a required discriminator",
+                    operation=spec.acp_id,
+                    locator=locator,
+                )
+            return
+        if not evidence_ids:
+            self._finish_coverage(
+                record,
+                "inconclusive",
+                reason="property-mapping-not-found",
+            )
+            self._add_gap(
+                context,
+                target.node_id,
+                spec.coverage_surface,
+                "inconclusive",
+                "property-mapping-not-found",
+                "ACP-04 returned no physical column mapping for the SDK-resolved property",
+                operation=spec.acp_id,
+                locator="datasources",
+            )
+            return
+        self._finish_coverage(record, "covered", evidence_ids=evidence_ids)
 
     def _collect_object_interface_mappings(
         self,
@@ -4682,6 +4907,8 @@ class DependencyGraphService(BaseService):
                     "field_path": evidence.field_path,
                     "sdk_namespace": operation.sdk_namespace,
                     "sdk_method": operation.sdk_method,
+                    "transport": operation.transport,
+                    "acp_id": operation.acp_id,
                 }
             item = dict(path)
             item.update(
@@ -4698,6 +4925,10 @@ class DependencyGraphService(BaseService):
                     "sdk_method": evidence_summary["sdk_method"]
                     if evidence_summary
                     else None,
+                    "transport": evidence_summary["transport"]
+                    if evidence_summary
+                    else None,
+                    "acp_id": evidence_summary["acp_id"] if evidence_summary else None,
                     "change_relevance": change_relevance,
                     "coverage_confidence": (
                         "verified"
