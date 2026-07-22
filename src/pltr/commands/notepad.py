@@ -55,7 +55,7 @@ def get_notepad(
     except TokenExpiredError:
         typer.echo(
             "DEGRADED [token-expired]: Foundry session token expired; "
-            "re-authenticate before relying on internal dependency coverage"
+            "re-authenticate before retrying this notepad read"
         )
         raise typer.Exit(1)
     except (ProfileNotFoundError, MissingCredentialsError) as exc:

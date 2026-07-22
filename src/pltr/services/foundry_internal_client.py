@@ -50,6 +50,22 @@ class FoundryInternalClient:
     def __init__(self, profile: str) -> None:
         self.profile = profile
 
+    @staticmethod
+    def _base_url(raw_host: Any) -> str:
+        """Normalize a stored profile host into a scheme-qualified base URL.
+
+        Stored profiles keep ``host`` verbatim, so it may or may not carry a
+        scheme. A bare host would make ``requests`` raise ``MissingSchema``;
+        prepend ``https://`` only when no scheme is present, so an explicit
+        ``http://`` profile is preserved. Shared by the Conjure and GraphQL
+        request paths so both normalize identically.
+        """
+
+        host = str(raw_host or "").strip().rstrip("/")
+        if host.startswith(("http://", "https://")):
+            return host
+        return f"https://{host}"
+
     def conjure(
         self,
         verb: str,
@@ -67,11 +83,11 @@ class FoundryInternalClient:
         """
 
         credentials = CredentialStorage().get_profile(self.profile)
-        host = str(credentials.get("host", "")).rstrip("/")
+        base_url = self._base_url(credentials.get("host", ""))
         token = credentials.get("token")
         response = requests.request(
             method=verb.upper(),
-            url=f"{host}/{path.lstrip('/')}",
+            url=f"{base_url}/{path.lstrip('/')}",
             json=dict(json_body) if json_body is not None else None,
             headers={
                 "Authorization": f"Bearer {token}",
@@ -167,11 +183,7 @@ class FoundryInternalClient:
         request_timeout: float,
     ) -> tuple[int, list[GraphQLResult], bool]:
         credentials = CredentialStorage().get_profile(self.profile)
-        host = str(credentials.get("host", "")).strip().rstrip("/")
-        for prefix in ("https://", "http://"):
-            if host.startswith(prefix):
-                host = host[len(prefix) :]
-                break
+        base_url = self._base_url(credentials.get("host", ""))
         token = credentials.get("token")
         body = {
             "operations": {
@@ -189,7 +201,7 @@ class FoundryInternalClient:
         }
         response = requests.request(
             method="POST",
-            url=f"https://{host}/graphql-gateway/api/bulk",
+            url=f"{base_url}/graphql-gateway/api/bulk",
             json=body,
             headers={
                 "Authorization": f"Bearer {token}",
