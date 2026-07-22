@@ -60,11 +60,13 @@ def test_sdk_provider_matches_legacy_delegator_provenance_and_budget(operation):
     assert provider_result.payload == payload
     assert provider_call.call_args.kwargs == delegator_call.call_args.kwargs
     assert provider_call.call_args.kwargs["request_timeout"] == 29
-    assert provider_context.budget.used_requests == delegator_context.budget.used_requests == 1
+    assert (
+        provider_context.budget.used_requests
+        == delegator_context.budget.used_requests
+        == 1
+    )
     provider_provenance = asdict(
-        provider_context.operation_provenance[
-            provider_result.operation_provenance_id
-        ]
+        provider_context.operation_provenance[provider_result.operation_provenance_id]
     )
     delegator_provenance = asdict(
         delegator_context.operation_provenance[delegator_operation_id]

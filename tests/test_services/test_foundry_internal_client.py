@@ -57,9 +57,7 @@ def test_conjure_forwards_the_callers_request_timeout(storage_class, request):
     }
     request.return_value = _response(200, {"rid": "one"})
 
-    FoundryInternalClient("profile").conjure(
-        "GET", "/resource", request_timeout=7
-    )
+    FoundryInternalClient("profile").conjure("GET", "/resource", request_timeout=7)
 
     assert request.call_args.kwargs["timeout"] == 7
 

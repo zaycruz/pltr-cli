@@ -97,8 +97,7 @@ def test_property_column_surface_stays_terminal_until_u4_collector_lands():
         == "unsupported-property-column-mapping"
     )
     assert all(
-        "property-column-mapping" in surfaces
-        for kind, surfaces in MATRIX_GAPS.items()
+        "property-column-mapping" in surfaces for kind, surfaces in MATRIX_GAPS.items()
     )
 
     service = DependencyGraphService(client=SimpleNamespace())
@@ -106,9 +105,7 @@ def test_property_column_surface_stays_terminal_until_u4_collector_lands():
     node = service._add_node(
         analysis, "property", "employeeId", {"property": "employeeId"}, True
     )
-    target = DependencyTarget(
-        "property", node.identifiers, node.display_name, node.id
-    )
+    target = DependencyTarget("property", node.identifiers, node.display_name, node.id)
 
     service._initialize_matrix(analysis, target)
     service._complete_coverage(analysis)
