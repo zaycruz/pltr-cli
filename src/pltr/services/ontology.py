@@ -490,7 +490,7 @@ class OntologyObjectService(BaseService):
             List of linked object dictionaries
         """
         try:
-            result = self.service.OntologyObject.list_linked_objects(
+            result = self.service.LinkedObject.list_linked_objects(
                 ontology_rid,
                 object_type,
                 primary_key,

@@ -73,51 +73,6 @@ class TestWidgetsCommands:
         assert result.exit_code == 1
         assert "Failed to get widget set" in result.stdout
 
-    # ===== Dev Mode Get Command Tests =====
-
-    def test_dev_mode_get_success(self, runner, mock_service) -> None:
-        """Test successful get dev mode settings command."""
-        # Setup
-        settings_result = {
-            "enabled": True,
-            "paused": False,
-            "widgetSetSettings": {},
-        }
-        mock_service.get_dev_mode_settings.return_value = settings_result
-
-        result = runner.invoke(
-            app,
-            [
-                "widgets",
-                "dev-mode",
-                "get",
-                "--format",
-                "json",
-            ],
-        )
-
-        # Assert
-        assert result.exit_code == 0
-        mock_service.get_dev_mode_settings.assert_called_once()
-
-    def test_dev_mode_get_error(self, runner, mock_service) -> None:
-        """Test get dev mode settings command with error."""
-        # Setup
-        mock_service.get_dev_mode_settings.side_effect = RuntimeError("API error")
-
-        result = runner.invoke(
-            app,
-            [
-                "widgets",
-                "dev-mode",
-                "get",
-            ],
-        )
-
-        # Assert
-        assert result.exit_code == 1
-        assert "Failed to get dev mode settings" in result.stdout
-
     # ===== Dev Mode Enable Command Tests =====
 
     def test_dev_mode_enable_success(self, runner, mock_service) -> None:
@@ -160,56 +115,6 @@ class TestWidgetsCommands:
         # Assert
         assert result.exit_code == 1
         assert "Failed to enable dev mode" in result.stdout
-
-    # ===== Dev Mode Disable Command Tests =====
-
-    def test_dev_mode_disable_success(self, runner, mock_service) -> None:
-        """Test successful disable dev mode command."""
-        # Setup
-        settings_result = {
-            "enabled": False,
-            "paused": False,
-        }
-        mock_service.disable_dev_mode.return_value = settings_result
-
-        result = runner.invoke(
-            app,
-            [
-                "widgets",
-                "dev-mode",
-                "disable",
-            ],
-        )
-
-        # Assert
-        assert result.exit_code == 0
-        mock_service.disable_dev_mode.assert_called_once()
-        assert "disabled" in result.stdout.lower()
-
-    # ===== Dev Mode Pause Command Tests =====
-
-    def test_dev_mode_pause_success(self, runner, mock_service) -> None:
-        """Test successful pause dev mode command."""
-        # Setup
-        settings_result = {
-            "enabled": True,
-            "paused": True,
-        }
-        mock_service.pause_dev_mode.return_value = settings_result
-
-        result = runner.invoke(
-            app,
-            [
-                "widgets",
-                "dev-mode",
-                "pause",
-            ],
-        )
-
-        # Assert
-        assert result.exit_code == 0
-        mock_service.pause_dev_mode.assert_called_once()
-        assert "paused" in result.stdout.lower()
 
     # ===== Release List Command Tests =====
 

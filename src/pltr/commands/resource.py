@@ -355,61 +355,6 @@ def get_resources_batch(
         raise typer.Exit(1)
 
 
-@app.command("get-metadata")
-def get_resource_metadata(
-    resource_rid: str = typer.Argument(
-        ..., help="Resource Identifier", autocompletion=complete_rid
-    ),
-    profile: Optional[str] = typer.Option(
-        None, "--profile", help="Profile name", autocompletion=complete_profile
-    ),
-    format: str = typer.Option(
-        "table",
-        "--format",
-        "-f",
-        help="Output format (table, json, csv)",
-        autocompletion=complete_output_format,
-    ),
-    output: Optional[str] = typer.Option(
-        None, "--output", "-o", help="Output file path"
-    ),
-):
-    """Get metadata for a specific resource."""
-    try:
-        service = ResourceService(profile=profile)
-
-        with SpinnerProgressTracker().track_spinner(
-            f"Fetching metadata for {resource_rid}..."
-        ):
-            metadata = service.get_resource_metadata(resource_rid)
-
-        # Format output
-        if format == "json":
-            if output:
-                formatter.save_to_file(metadata, output, "json")
-            else:
-                formatter.format_dict(metadata, format=format)
-        elif format == "csv":
-            # Convert metadata dict to list for CSV output
-            metadata_list = [{"key": k, "value": v} for k, v in metadata.items()]
-            if output:
-                formatter.save_to_file(metadata_list, output, "csv")
-            else:
-                formatter.format_list(metadata_list, format=format)
-        else:
-            _format_metadata_table(metadata)
-
-        if output:
-            formatter.print_success(f"Resource metadata saved to {output}")
-
-    except (ProfileNotFoundError, MissingCredentialsError) as e:
-        formatter.print_error(f"Authentication error: {e}")
-        raise typer.Exit(1)
-    except Exception as e:
-        formatter.print_error(f"Failed to get resource metadata: {e}")
-        raise typer.Exit(1)
-
-
 # ==================== Trash Operations ====================
 
 
@@ -827,20 +772,6 @@ def _format_resources_table(resources: List[dict]):
     console.print(f"\nTotal: {len(resources)} resources")
 
 
-def _format_metadata_table(metadata: dict):
-    """Format metadata as a table."""
-    table = Table(title="Resource Metadata", show_header=True, header_style="bold cyan")
-    table.add_column("Key", style="cyan")
-    table.add_column("Value")
-
-    for key, value in metadata.items():
-        # Convert complex values to strings
-        value_str = str(value) if value is not None else "N/A"
-        table.add_row(key, value_str)
-
-    console.print(table)
-
-
 def _format_markings_table(markings: List[dict]):
     """Format markings as a table."""
     table = Table(title="Markings", show_header=True, header_style="bold cyan")
@@ -935,9 +866,6 @@ def main():
 
         # Search for datasets containing "user"
         pltr resource search "user" --type dataset
-
-        # Get resource metadata
-        pltr resource get-metadata ri.compass.main.dataset.xyz123
 
         # Trash operations
         pltr resource delete ri.compass.main.dataset.xyz123

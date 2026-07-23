@@ -6,6 +6,12 @@ from typing import Any, Callable, Dict, List, Optional, Union
 from pathlib import Path
 import csv
 
+from foundry_sdk.v2.datasets.models import (
+    PrimaryKeyResolutionUnique,
+    ViewBackingDataset,
+    ViewPrimaryKey,
+)
+
 from ..config.settings import Settings
 from ..utils.pagination import PaginationConfig, PaginationResult
 from .base import BaseService
@@ -273,20 +279,10 @@ class DatasetService(BaseService):
             Created dataset information
         """
         try:
-            # Try the v2 API first (Dataset.create)
             dataset = self.service.Dataset.create(
                 name=name, parent_folder_rid=parent_folder_rid
             )
             return self._format_dataset_info(dataset)
-        except AttributeError:
-            # Fallback to service.create_dataset
-            try:
-                dataset = self.service.create_dataset(
-                    name=name, parent_folder_rid=parent_folder_rid
-                )
-                return self._format_dataset_info(dataset)
-            except Exception as e:
-                raise RuntimeError(f"Failed to create dataset '{name}': {e}")
         except Exception as e:
             raise RuntimeError(f"Failed to create dataset '{name}': {e}")
 
@@ -302,14 +298,7 @@ class DatasetService(BaseService):
             Table data in specified format
         """
         try:
-            # Try the v2 API first (Dataset.read_table)
             return self.service.Dataset.read_table(dataset_rid, format=format)
-        except AttributeError:
-            # Fallback to service.read_table
-            try:
-                return self.service.read_table(dataset_rid, format=format)
-            except Exception as e:
-                raise RuntimeError(f"Failed to read dataset {dataset_rid}: {e}")
         except Exception as e:
             raise RuntimeError(f"Failed to read dataset {dataset_rid}: {e}")
 
@@ -337,17 +326,9 @@ class DatasetService(BaseService):
             raise RuntimeError(f"Failed to preview dataset {dataset_rid}: {e}")
 
     def delete_dataset(self, dataset_rid: str) -> bool:
-        """
-        Delete a dataset.
-
-        Args:
-            dataset_rid: Dataset Resource Identifier
-
-        Returns:
-            True if deletion was successful
-        """
+        """Move a dataset resource to the Foundry filesystem trash."""
         try:
-            self.service.delete_dataset(dataset_rid)
+            self.client.filesystem.Resource.delete(dataset_rid)
             return True
         except Exception as e:
             raise RuntimeError(f"Failed to delete dataset {dataset_rid}: {e}")
@@ -782,7 +763,7 @@ class DatasetService(BaseService):
             List of branch information dictionaries
         """
         try:
-            branches = self.service.list_branches(dataset_rid=dataset_rid)
+            branches = self.service.Dataset.Branch.list(dataset_rid=dataset_rid)
 
             return [
                 {
@@ -811,10 +792,14 @@ class DatasetService(BaseService):
             Created branch information
         """
         try:
-            branch = self.service.create_branch(
+            parent = self.service.Dataset.Branch.get(
                 dataset_rid=dataset_rid,
-                branch_name=branch_name,
-                parent_branch=parent_branch,
+                branch_name=parent_branch,
+            )
+            branch = self.service.Dataset.Branch.create(
+                dataset_rid=dataset_rid,
+                name=branch_name,
+                transaction_rid=getattr(parent, "transaction_rid", None),
             )
 
             return {
@@ -957,32 +942,25 @@ class DatasetService(BaseService):
                 f"Failed to get transaction status {transaction_rid}: {e}"
             )
 
-    def get_transactions(
-        self, dataset_rid: str, branch: str = "master"
-    ) -> List[Dict[str, Any]]:
+    def get_transactions(self, dataset_rid: str) -> List[Dict[str, Any]]:
         """
-        Get list of transactions for a dataset branch.
+        Get the dataset-wide transaction history.
 
         Args:
             dataset_rid: Dataset Resource Identifier
-            branch: Dataset branch name
 
         Returns:
             List of transaction information dictionaries
         """
         try:
-            # Use the v2 API Dataset.Transaction for transaction listing
-            # Note: This method may not exist in all SDK versions
-            transactions = self.service.Dataset.Transaction.list(
-                dataset_rid=dataset_rid, branch_name=branch
-            )
+            transactions = self.service.Dataset.transactions(dataset_rid=dataset_rid)
 
             return [
                 {
                     "transaction_rid": getattr(transaction, "rid", None),
                     "status": getattr(transaction, "status", None),
                     "transaction_type": getattr(transaction, "transaction_type", None),
-                    "branch": getattr(transaction, "branch", branch),
+                    "branch": getattr(transaction, "branch", None),
                     "created_time": getattr(transaction, "created_time", None),
                     "created_by": getattr(transaction, "created_by", None),
                     "committed_time": getattr(transaction, "committed_time", None),
@@ -990,12 +968,6 @@ class DatasetService(BaseService):
                 }
                 for transaction in transactions
             ]
-        except AttributeError:
-            # Method not available in this SDK version
-            raise NotImplementedError(
-                "Transaction listing is not supported by this SDK version. "
-                "This feature may require a newer version of foundry-platform-python."
-            )
         except Exception as e:
             raise RuntimeError(
                 f"Failed to get transactions for dataset {dataset_rid}: {e}"
@@ -1011,28 +983,10 @@ class DatasetService(BaseService):
         Returns:
             List of view information dictionaries
         """
-        try:
-            # Note: This method may not be available in all SDK versions
-            views = self.service.list_views(dataset_rid=dataset_rid)
-
-            return [
-                {
-                    "view_rid": getattr(view, "rid", None),
-                    "name": getattr(view, "name", None),
-                    "description": getattr(view, "description", None),
-                    "created_time": getattr(view, "created_time", None),
-                    "created_by": getattr(view, "created_by", None),
-                }
-                for view in views
-            ]
-        except AttributeError:
-            # Method not available in this SDK version
-            raise NotImplementedError(
-                "View listing is not supported by this SDK version. "
-                "This feature may require a newer version of foundry-platform-python."
-            )
-        except Exception as e:
-            raise RuntimeError(f"Failed to get views for dataset {dataset_rid}: {e}")
+        raise NotImplementedError(
+            "View listing is unavailable because foundry-platform-sdk 1.95.0 "
+            "does not expose datasets.View.list."
+        )
 
     def create_view(
         self, dataset_rid: str, view_name: str, description: Optional[str] = None
@@ -1049,27 +1003,34 @@ class DatasetService(BaseService):
             Created view information
         """
         try:
-            # Note: This method may not be available in all SDK versions
-            view = self.service.create_view(
-                dataset_rid=dataset_rid,
-                name=view_name,
-                description=description,
+            if description is not None:
+                raise NotImplementedError(
+                    "View descriptions are unavailable because "
+                    "foundry-platform-sdk 1.95.0 View.create has no description parameter."
+                )
+
+            backing_dataset = self.service.Dataset.get(dataset_rid)
+            view = self.service.View.create(
+                backing_datasets=[
+                    ViewBackingDataset(
+                        dataset_rid=dataset_rid,
+                        stop_propagating_marking_ids=[],
+                    )
+                ],
+                parent_folder_rid=backing_dataset.parent_folder_rid,
+                view_name=view_name,
             )
 
             return {
-                "view_rid": getattr(view, "rid", None),
+                "view_rid": getattr(view, "dataset_rid", None),
                 "name": view_name,
                 "description": description,
                 "dataset_rid": dataset_rid,
-                "created_time": getattr(view, "created_time", None),
-                "created_by": getattr(view, "created_by", None),
+                "parent_folder_rid": getattr(view, "parent_folder_rid", None),
+                "backing_datasets": getattr(view, "backing_datasets", []),
             }
-        except AttributeError:
-            # Method not available in this SDK version
-            raise NotImplementedError(
-                "View creation is not supported by this SDK version. "
-                "This feature may require a newer version of foundry-platform-python."
-            )
+        except NotImplementedError:
+            raise
         except Exception as e:
             raise RuntimeError(
                 f"Failed to create view '{view_name}' for dataset {dataset_rid}: {e}"
@@ -1382,14 +1343,12 @@ class DatasetService(BaseService):
             View information dictionary
         """
         try:
-            view = self.service.Dataset.View.get(
-                dataset_rid=view_rid, branch_name=branch
-            )
+            view = self.service.View.get(view_dataset_rid=view_rid, branch=branch)
 
             return {
                 "view_rid": view_rid,
-                "name": getattr(view, "name", None),
-                "description": getattr(view, "description", None),
+                "name": getattr(view, "view_name", None),
+                "description": None,
                 "branch": branch,
                 "created_time": getattr(view, "created_time", None),
                 "created_by": getattr(view, "created_by", None),
@@ -1413,8 +1372,15 @@ class DatasetService(BaseService):
             Operation result
         """
         try:
-            result = self.service.Dataset.View.add_backing_datasets(
-                dataset_rid=view_rid, backing_datasets=dataset_rids
+            result = self.service.View.add_backing_datasets(
+                view_dataset_rid=view_rid,
+                backing_datasets=[
+                    ViewBackingDataset(
+                        dataset_rid=dataset_rid,
+                        stop_propagating_marking_ids=[],
+                    )
+                    for dataset_rid in dataset_rids
+                ],
             )
 
             return {
@@ -1442,8 +1408,15 @@ class DatasetService(BaseService):
             Operation result
         """
         try:
-            result = self.service.Dataset.View.remove_backing_datasets(
-                dataset_rid=view_rid, backing_datasets=dataset_rids
+            result = self.service.View.remove_backing_datasets(
+                view_dataset_rid=view_rid,
+                backing_datasets=[
+                    ViewBackingDataset(
+                        dataset_rid=dataset_rid,
+                        stop_propagating_marking_ids=[],
+                    )
+                    for dataset_rid in dataset_rids
+                ],
             )
 
             return {
@@ -1471,8 +1444,15 @@ class DatasetService(BaseService):
             Operation result
         """
         try:
-            result = self.service.Dataset.View.replace_backing_datasets(
-                dataset_rid=view_rid, backing_datasets=dataset_rids
+            result = self.service.View.replace_backing_datasets(
+                view_dataset_rid=view_rid,
+                backing_datasets=[
+                    ViewBackingDataset(
+                        dataset_rid=dataset_rid,
+                        stop_propagating_marking_ids=[],
+                    )
+                    for dataset_rid in dataset_rids
+                ],
             )
 
             return {
@@ -1498,8 +1478,12 @@ class DatasetService(BaseService):
             Operation result
         """
         try:
-            result = self.service.Dataset.View.add_primary_key(
-                dataset_rid=view_rid, primary_key=key_fields
+            result = self.service.View.add_primary_key(
+                view_dataset_rid=view_rid,
+                primary_key=ViewPrimaryKey(
+                    columns=key_fields,
+                    resolution=PrimaryKeyResolutionUnique(),
+                ),
             )
 
             return {

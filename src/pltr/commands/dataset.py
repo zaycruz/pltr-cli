@@ -1177,7 +1177,6 @@ def list_transactions(
     dataset_rid: str = typer.Argument(
         ..., help="Dataset Resource Identifier", autocompletion=complete_rid
     ),
-    branch: str = typer.Option("master", "--branch", help="Dataset branch"),
     profile: Optional[str] = typer.Option(
         None, "--profile", "-p", help="Profile name", autocompletion=complete_profile
     ),
@@ -1192,15 +1191,15 @@ def list_transactions(
         None, "--output", "-o", help="Output file path"
     ),
 ):
-    """List transactions for a dataset branch."""
+    """List the dataset-wide transaction history."""
     try:
         cache_rid(dataset_rid)
         service = DatasetService(profile=profile)
 
         with SpinnerProgressTracker().track_spinner(
-            f"Fetching transactions for {dataset_rid} (branch: {branch})..."
+            f"Fetching transactions for {dataset_rid}..."
         ):
-            transactions = service.get_transactions(dataset_rid, branch)
+            transactions = service.get_transactions(dataset_rid)
 
         formatter.format_transactions(transactions, format, output)
 

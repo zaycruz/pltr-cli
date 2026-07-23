@@ -19,29 +19,6 @@ class WidgetsService(BaseService):
 
     # ===== DevModeSettings =====
 
-    def get_dev_mode_settings(self) -> Dict[str, Any]:
-        """
-        Get the dev mode settings for the current user.
-
-        Returns:
-            Dictionary containing dev mode settings:
-            - enabled: Whether dev mode is enabled
-            - paused: Whether dev mode is paused
-            - widgetSetSettings: Settings per widget set
-
-        Raises:
-            RuntimeError: If the operation fails
-
-        Example:
-            >>> service = WidgetsService()
-            >>> settings = service.get_dev_mode_settings()
-        """
-        try:
-            settings = self.service.DevModeSettings.get(preview=True)
-            return self._serialize_response(settings)
-        except Exception as e:
-            raise RuntimeError(f"Failed to get dev mode settings: {e}") from e
-
     def enable_dev_mode(self) -> Dict[str, Any]:
         """
         Enable dev mode for the current user.
@@ -61,46 +38,6 @@ class WidgetsService(BaseService):
             return self._serialize_response(settings)
         except Exception as e:
             raise RuntimeError(f"Failed to enable dev mode: {e}") from e
-
-    def disable_dev_mode(self) -> Dict[str, Any]:
-        """
-        Disable dev mode for the current user.
-
-        Returns:
-            Dictionary containing updated dev mode settings
-
-        Raises:
-            RuntimeError: If the operation fails
-
-        Example:
-            >>> service = WidgetsService()
-            >>> settings = service.disable_dev_mode()
-        """
-        try:
-            settings = self.service.DevModeSettings.disable(preview=True)
-            return self._serialize_response(settings)
-        except Exception as e:
-            raise RuntimeError(f"Failed to disable dev mode: {e}") from e
-
-    def pause_dev_mode(self) -> Dict[str, Any]:
-        """
-        Pause dev mode for the current user.
-
-        Returns:
-            Dictionary containing updated dev mode settings
-
-        Raises:
-            RuntimeError: If the operation fails
-
-        Example:
-            >>> service = WidgetsService()
-            >>> settings = service.pause_dev_mode()
-        """
-        try:
-            settings = self.service.DevModeSettings.pause(preview=True)
-            return self._serialize_response(settings)
-        except Exception as e:
-            raise RuntimeError(f"Failed to pause dev mode: {e}") from e
 
     # ===== WidgetSet =====
 

@@ -125,14 +125,16 @@ pltr dataset transactions list <dataset-rid> [options]
 ```
 
 **Options:**
-- `--branch <name>`: Filter by branch
 - `--format <format>`: Output format
 - `--output <file>`: Save output to file
 
 **Example:**
 ```bash
-pltr dataset transactions list ri.foundry.main.dataset.abc123 --branch master
+pltr dataset transactions list ri.foundry.main.dataset.abc123
 ```
+
+Transaction listing is dataset-wide; the SDK endpoint does not expose a branch
+filter.
 
 ## Practical Examples
 

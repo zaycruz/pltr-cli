@@ -221,16 +221,19 @@ echo "Report generated: daily_report_${DATE}.csv"
 # List connections
 pltr connectivity connection list
 
-# Create file import
-pltr connectivity import file ri.conn.main.connection.123 "/data/sales.csv" ri.foundry.main.dataset.456 \
-  --config '{"format": "CSV", "delimiter": ",", "header": true}' \
-  --execute
+# List existing file imports for a connection
+pltr connectivity import list-file \
+  --connection ri.conn.main.connection.123 \
+  --format json
 
-# Create table import with incremental sync
-pltr connectivity import table ri.conn.main.connection.123 "daily_sales" ri.foundry.main.dataset.456 \
-  --config '{"sync_mode": "incremental", "primary_key": "transaction_id"}' \
-  --execute
+# Inspect an existing table import
+pltr connectivity import get-table ri.import.main.table.456 \
+  --connection ri.conn.main.connection.123 \
+  --format json
 ```
+
+The pinned SDK requires connection-specific typed models to create imports.
+The generic file/table creation commands are therefore not exposed.
 
 ## Best Practices
 

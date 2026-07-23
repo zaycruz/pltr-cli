@@ -127,7 +127,6 @@ pltr project imports PROJECT_RID [--reference-type EXTERNAL|FILESYSTEM] [--page-
 pltr project search QUERY [--space-rid SPACE_RID] [--page-size N] [--page-token TOKEN]
 pltr project templates
 pltr project update PROJECT_RID [--display-name TEXT] [--description TEXT]
-pltr project delete PROJECT_RID [--confirm]
 ```
 
 `project imports` uses the SDK's verified `Project.Reference.list` contract.
@@ -237,16 +236,6 @@ pltr resource search "sales data" --resource-type dataset
 pltr resource batch-get RESOURCE_RIDS...
 ```
 
-### Resource Metadata
-
-```bash
-# Get metadata
-pltr resource get-metadata RESOURCE_RID [--format FORMAT]
-
-# Example
-pltr resource get-metadata ri.foundry.main.dataset.abc123 --format json
-```
-
 ## Resource Lifecycle Commands
 
 ### Delete Resource (Move to Trash)
@@ -342,19 +331,21 @@ pltr resource batch-get-by-path "/Org/Project/Dataset1" "/Org/Project/Dataset2"
 ### Grant Role
 
 ```bash
-pltr resource-role grant RESOURCE_RID PRINCIPAL_ID PRINCIPAL_TYPE ROLE_NAME
+pltr resource-role grant RESOURCE_RID \
+  --principal-id PRINCIPAL_UUID \
+  --principal-type User|Group \
+  --role ROLE_ID
 
-# PRINCIPAL_TYPE: "User" or "Group"
-
-# Examples
-pltr resource-role grant ri.foundry.main.dataset.abc123 john.doe User viewer
-pltr resource-role grant ri.foundry.main.dataset.abc123 data-team Group editor
+# The pinned SDK requires a principal UUID.
 ```
 
 ### Revoke Role
 
 ```bash
-pltr resource-role revoke RESOURCE_RID PRINCIPAL_ID PRINCIPAL_TYPE ROLE_NAME
+pltr resource-role revoke RESOURCE_RID \
+  --principal-id PRINCIPAL_UUID \
+  --principal-type User|Group \
+  --role ROLE_ID
 ```
 
 ### List Roles
@@ -364,36 +355,6 @@ pltr resource-role list RESOURCE_RID [--principal-type TYPE]
 
 # Example
 pltr resource-role list ri.foundry.main.dataset.abc123 --principal-type User
-```
-
-### Get Principal Roles
-
-```bash
-pltr resource-role get-principal-roles PRINCIPAL_ID PRINCIPAL_TYPE [--resource-rid RID]
-
-# Example
-pltr resource-role get-principal-roles john.doe User
-```
-
-### Bulk Grant/Revoke
-
-```bash
-# Bulk grant
-pltr resource-role bulk-grant RESOURCE_RID '[
-  {"principal_id": "john.doe", "principal_type": "User", "role_name": "viewer"},
-  {"principal_id": "data-team", "principal_type": "Group", "role_name": "editor"}
-]'
-
-# Bulk revoke
-pltr resource-role bulk-revoke RESOURCE_RID '[
-  {"principal_id": "john.doe", "principal_type": "User", "role_name": "viewer"}
-]'
-```
-
-### Available Roles
-
-```bash
-pltr resource-role available-roles RESOURCE_RID
 ```
 
 ## Common Patterns
@@ -410,13 +371,16 @@ pltr folder create "Reports" --parent-folder $ROOT
 ### Set up team permissions
 ```bash
 DATASET="ri.foundry.main.dataset.customer-data"
+TEAM_UUID="12345678-1234-1234-1234-123456789abc"
+USER_UUID="87654321-4321-4321-4321-cba987654321"
 
 # Grant team access
-pltr resource-role grant $DATASET data-team Group owner
-pltr resource-role grant $DATASET analytics-team Group editor
+pltr resource-role grant "$DATASET" \
+  --principal-id "$TEAM_UUID" --principal-type Group --role ROLE_ID
 
 # Grant individual access
-pltr resource-role grant $DATASET john.analyst User viewer
+pltr resource-role grant "$DATASET" \
+  --principal-id "$USER_UUID" --principal-type User --role ROLE_ID
 ```
 
 ### Find resources

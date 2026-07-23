@@ -18,6 +18,7 @@ def mock_dataset_service():
         mock_datasets = Mock()
         mock_dataset_class = Mock()  # The Dataset class
         mock_datasets.Dataset = mock_dataset_class
+        mock_datasets.View = Mock()
         mock_client.datasets = mock_datasets
         mock_auth.return_value.get_client.return_value = mock_client
 
@@ -45,6 +46,15 @@ def sample_dataset_full():
     dataset.parent_folder_rid = "ri.foundry.main.folder.parent"
     # The v2 API only has these three attributes
     return dataset
+
+
+def test_delete_dataset_uses_filesystem_resource_delete(mock_dataset_service):
+    service, _ = mock_dataset_service
+    dataset_rid = "ri.foundry.main.dataset.test-dataset"
+
+    assert service.delete_dataset(dataset_rid) is True
+
+    service.client.filesystem.Resource.delete.assert_called_once_with(dataset_rid)
 
 
 def test_get_dataset_stats_derives_file_and_transaction_fields(mock_dataset_service):
@@ -539,12 +549,11 @@ def test_get_transaction_build_success(mock_dataset_service):
 
 def test_get_view_success(mock_dataset_service):
     """Test successful view retrieval."""
-    service, mock_dataset_class = mock_dataset_service
+    service, _ = mock_dataset_service
 
     # Mock the View.get method
     mock_view = Mock()
-    mock_view.name = "Test View"
-    mock_view.description = "Test view description"
+    mock_view.view_name = "Test View"
     mock_view.created_time = "2023-01-01T00:00:00Z"
     mock_view.created_by = "test-user"
     mock_view.backing_datasets = ["ri.foundry.main.dataset.backing"]
@@ -552,27 +561,31 @@ def test_get_view_success(mock_dataset_service):
 
     mock_view_class = Mock()
     mock_view_class.get = Mock(return_value=mock_view)
-    mock_dataset_class.View = mock_view_class
+    service.service.View = mock_view_class
 
     result = service.get_view("ri.foundry.main.view.test", "master")
 
     assert result["view_rid"] == "ri.foundry.main.view.test"
     assert result["name"] == "Test View"
-    assert result["description"] == "Test view description"
+    assert result["description"] is None
     assert result["branch"] == "master"
     assert result["backing_datasets"] == ["ri.foundry.main.dataset.backing"]
     assert result["primary_key"] == ["id", "name"]
+    mock_view_class.get.assert_called_once_with(
+        view_dataset_rid="ri.foundry.main.view.test",
+        branch="master",
+    )
 
 
 def test_add_backing_datasets_success(mock_dataset_service):
     """Test successful addition of backing datasets to view."""
-    service, mock_dataset_class = mock_dataset_service
+    service, _ = mock_dataset_service
 
     # Mock the View.add_backing_datasets method
     mock_result = Mock()
     mock_view_class = Mock()
     mock_view_class.add_backing_datasets = Mock(return_value=mock_result)
-    mock_dataset_class.View = mock_view_class
+    service.service.View = mock_view_class
 
     dataset_rids = ["ri.foundry.main.dataset.new1", "ri.foundry.main.dataset.new2"]
     result = service.add_backing_datasets("ri.foundry.main.view.test", dataset_rids)
@@ -581,9 +594,130 @@ def test_add_backing_datasets_success(mock_dataset_service):
     assert result["added_datasets"] == dataset_rids
     assert result["success"] is True
 
-    mock_view_class.add_backing_datasets.assert_called_once_with(
-        dataset_rid="ri.foundry.main.view.test", backing_datasets=dataset_rids
+    call = mock_view_class.add_backing_datasets.call_args
+    assert call.kwargs["view_dataset_rid"] == "ri.foundry.main.view.test"
+    assert [
+        backing.dataset_rid for backing in call.kwargs["backing_datasets"]
+    ] == dataset_rids
+    assert all(
+        backing.stop_propagating_marking_ids == []
+        for backing in call.kwargs["backing_datasets"]
     )
+
+
+def test_get_views_reports_sdk_gap(mock_dataset_service):
+    service, _ = mock_dataset_service
+
+    with pytest.raises(
+        NotImplementedError,
+        match=r"foundry-platform-sdk 1\.95\.0.*datasets\.View\.list",
+    ):
+        service.get_views("ri.foundry.main.dataset.source")
+
+
+def test_create_view_uses_real_sdk_contract(mock_dataset_service):
+    service, mock_dataset_class = mock_dataset_service
+    mock_dataset_class.get.return_value = Mock(
+        parent_folder_rid="ri.foundry.main.folder.parent"
+    )
+    created = Mock(
+        dataset_rid="ri.foundry.main.dataset.view",
+        parent_folder_rid="ri.foundry.main.folder.parent",
+        backing_datasets=[],
+    )
+    service.service.View.create.return_value = created
+
+    result = service.create_view(
+        "ri.foundry.main.dataset.source",
+        "analysis-view",
+    )
+
+    assert result["view_rid"] == "ri.foundry.main.dataset.view"
+    call = service.service.View.create.call_args
+    assert call.kwargs["view_name"] == "analysis-view"
+    assert call.kwargs["parent_folder_rid"] == "ri.foundry.main.folder.parent"
+    assert len(call.kwargs["backing_datasets"]) == 1
+    assert (
+        call.kwargs["backing_datasets"][0].dataset_rid
+        == "ri.foundry.main.dataset.source"
+    )
+
+
+def test_create_view_rejects_unsupported_description(mock_dataset_service):
+    service, _ = mock_dataset_service
+
+    with pytest.raises(
+        NotImplementedError,
+        match="View.create has no description parameter",
+    ):
+        service.create_view(
+            "ri.foundry.main.dataset.source",
+            "analysis-view",
+            description="unsupported",
+        )
+
+
+def test_branch_list_and_create_use_nested_sdk_clients(mock_dataset_service):
+    service, mock_dataset_class = mock_dataset_service
+    existing = SimpleNamespace(
+        name="master",
+        transaction_rid="ri.foundry.main.transaction.parent",
+    )
+    created = SimpleNamespace(
+        name="feature",
+        transaction_rid="ri.foundry.main.transaction.parent",
+    )
+    mock_dataset_class.Branch.list.return_value = [existing]
+    mock_dataset_class.Branch.get.return_value = existing
+    mock_dataset_class.Branch.create.return_value = created
+
+    assert service.get_branches("ri.foundry.main.dataset.source")[0]["name"] == "master"
+    result = service.create_branch(
+        "ri.foundry.main.dataset.source",
+        "feature",
+        parent_branch="master",
+    )
+
+    assert result["name"] == "feature"
+    mock_dataset_class.Branch.list.assert_called_once_with(
+        dataset_rid="ri.foundry.main.dataset.source"
+    )
+    mock_dataset_class.Branch.get.assert_called_once_with(
+        dataset_rid="ri.foundry.main.dataset.source",
+        branch_name="master",
+    )
+    mock_dataset_class.Branch.create.assert_called_once_with(
+        dataset_rid="ri.foundry.main.dataset.source",
+        name="feature",
+        transaction_rid="ri.foundry.main.transaction.parent",
+    )
+
+
+def test_view_mutations_use_real_models(mock_dataset_service):
+    service, _ = mock_dataset_service
+    view_rid = "ri.foundry.main.dataset.view"
+    dataset_rids = ["ri.foundry.main.dataset.one", "ri.foundry.main.dataset.two"]
+
+    service.remove_backing_datasets(view_rid, dataset_rids)
+    remove_call = service.service.View.remove_backing_datasets.call_args
+    assert remove_call.kwargs["view_dataset_rid"] == view_rid
+    assert [
+        backing.dataset_rid for backing in remove_call.kwargs["backing_datasets"]
+    ] == dataset_rids
+
+    service.replace_backing_datasets(view_rid, dataset_rids)
+    replace_call = service.service.View.replace_backing_datasets.call_args
+    assert replace_call.kwargs["view_dataset_rid"] == view_rid
+    assert [
+        backing.dataset_rid for backing in replace_call.kwargs["backing_datasets"]
+    ] == dataset_rids
+
+    service.add_primary_key(view_rid, ["id"])
+    primary_key_call = service.service.View.add_primary_key.call_args
+    assert primary_key_call.kwargs["view_dataset_rid"] == view_rid
+    primary_key = primary_key_call.kwargs["primary_key"]
+    assert primary_key.columns == ["id"]
+    assert primary_key.resolution.type == "unique"
 
 
 def test_get_schedule_rids_page_preserves_strings_token_and_exact_kwargs(

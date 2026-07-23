@@ -278,27 +278,6 @@ class TestProjectService:
 
         assert project_service._is_project_resource(resource) is True
 
-    def test_delete_project(self, project_service, mock_client):
-        """Test deleting a project."""
-        project_service._client = mock_client
-
-        project_service.delete_project("ri.compass.main.project.123")
-
-        mock_client.filesystem.Project.delete.assert_called_once_with(
-            "ri.compass.main.project.123", preview=True
-        )
-
-    def test_delete_project_failure(self, project_service, mock_client):
-        """Test handling project deletion failure."""
-        mock_client.filesystem.Project.delete.side_effect = Exception("Deletion failed")
-        project_service._client = mock_client
-
-        with pytest.raises(
-            RuntimeError,
-            match="Failed to delete project ri.compass.main.project.123: Deletion failed",
-        ):
-            project_service.delete_project("ri.compass.main.project.123")
-
     def test_update_project(self, project_service, mock_client):
         """Test updating a project."""
         mock_project = Mock()

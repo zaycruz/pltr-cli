@@ -92,27 +92,10 @@ pltr connectivity connection upload-jdbc-drivers ri.conn.main.connection.12345 \
 
 ## File Import Commands
 
-### Create File Import
-
-```bash
-pltr connectivity import file CONNECTION_RID SOURCE_PATH TARGET_DATASET_RID [OPTIONS]
-
-# Options:
-#   --config, -c TEXT    Import config (JSON)
-#   --execute            Execute immediately after creation
-
-# Examples
-pltr connectivity import file ri.conn.main.connection.123 "/data/sales.csv" ri.foundry.main.dataset.456
-
-pltr connectivity import file ri.conn.main.connection.123 "/data/sales.csv" ri.foundry.main.dataset.456 \
-  --config '{"format": "CSV", "delimiter": ",", "header": true}' \
-  --execute
-```
-
 ### List File Imports
 
 ```bash
-pltr connectivity import list-file [--connection CONNECTION_RID] [--format FORMAT]
+pltr connectivity import list-file --connection CONNECTION_RID [--format FORMAT]
 
 # Example
 pltr connectivity import list-file --connection ri.conn.main.connection.123
@@ -121,35 +104,19 @@ pltr connectivity import list-file --connection ri.conn.main.connection.123
 ### Get File Import Details
 
 ```bash
-pltr connectivity import get-file IMPORT_RID [--format FORMAT]
+pltr connectivity import get-file IMPORT_RID --connection CONNECTION_RID [--format FORMAT]
 
 # Example
-pltr connectivity import get-file ri.import.main.file.12345
+pltr connectivity import get-file ri.import.main.file.12345 \
+  --connection ri.conn.main.connection.123
 ```
 
 ## Table Import Commands
 
-### Create Table Import
-
-```bash
-pltr connectivity import table CONNECTION_RID SOURCE_TABLE TARGET_DATASET_RID [OPTIONS]
-
-# Options:
-#   --config, -c TEXT    Import config (JSON)
-#   --execute            Execute immediately
-
-# Examples
-pltr connectivity import table ri.conn.main.connection.123 "sales_data" ri.foundry.main.dataset.456
-
-pltr connectivity import table ri.conn.main.connection.123 "sales_data" ri.foundry.main.dataset.456 \
-  --config '{"sync_mode": "incremental", "primary_key": "id"}' \
-  --execute
-```
-
 ### List Table Imports
 
 ```bash
-pltr connectivity import list-table [--connection CONNECTION_RID] [--format FORMAT]
+pltr connectivity import list-table --connection CONNECTION_RID [--format FORMAT]
 
 # Example
 pltr connectivity import list-table --connection ri.conn.main.connection.123
@@ -158,43 +125,11 @@ pltr connectivity import list-table --connection ri.conn.main.connection.123
 ### Get Table Import Details
 
 ```bash
-pltr connectivity import get-table IMPORT_RID [--format FORMAT]
+pltr connectivity import get-table IMPORT_RID --connection CONNECTION_RID [--format FORMAT]
 
 # Example
-pltr connectivity import get-table ri.import.main.table.12345
-```
-
-## Common Patterns
-
-### Set up daily data import
-
-```bash
-# 1. List available connections
-pltr connectivity connection list
-
-# 2. Create table import with incremental sync
-pltr connectivity import table ri.conn.main.connection.123 "daily_sales" ri.foundry.main.dataset.456 \
-  --config '{
-    "sync_mode": "incremental",
-    "primary_key": "transaction_id",
-    "updated_at_column": "last_modified"
-  }'
-
-# 3. Execute the import
-pltr connectivity import table ri.conn.main.connection.123 "daily_sales" ri.foundry.main.dataset.456 --execute
-```
-
-### Bulk file import from S3
-
-```bash
-pltr connectivity import file ri.conn.main.s3.123 "/data/2024/sales/*.csv" ri.foundry.main.dataset.456 \
-  --config '{
-    "format": "CSV",
-    "delimiter": ",",
-    "compression": "gzip",
-    "multiline": true
-  }' \
-  --execute --format json --output import_results.json
+pltr connectivity import get-table ri.import.main.table.12345 \
+  --connection ri.conn.main.connection.123
 ```
 
 ### List all imports for a connection
@@ -207,21 +142,4 @@ pltr connectivity import list-file --connection $CONNECTION
 
 echo "Table imports:"
 pltr connectivity import list-table --connection $CONNECTION
-```
-
-## Import Configuration Options
-
-Common config fields:
-
-```json
-{
-  "format": "CSV",
-  "delimiter": ",",
-  "header": true,
-  "compression": "gzip",
-  "multiline": true,
-  "sync_mode": "incremental",
-  "primary_key": "id",
-  "updated_at_column": "last_modified"
-}
 ```

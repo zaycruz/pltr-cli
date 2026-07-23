@@ -355,8 +355,8 @@ SALES_FOLDER=$(pltr folder create "Sales Analytics" --format json | jq -r '.rid'
 RAW_DATA_FOLDER=$(pltr folder create "Raw Sales Data" --parent-folder $SALES_FOLDER --format json | jq -r '.rid')
 PROCESSED_FOLDER=$(pltr folder create "Processed Sales Data" --parent-folder $SALES_FOLDER --format json | jq -r '.rid')
 
-# 3. Get resource metadata
-pltr resource get-metadata ri.foundry.main.dataset.sales-analytics --format json
+# 3. Get resource details
+pltr resource get ri.foundry.main.dataset.sales-analytics --format json
 
 echo "Folder structure created!"
 echo "Raw data folder: $RAW_DATA_FOLDER"
@@ -375,6 +375,8 @@ Set up and manage resource permissions systematically:
 
 # Dataset RID to manage
 DATASET_RID="ri.foundry.main.dataset.customer-data"
+TEAM_UUID="12345678-1234-1234-1234-123456789abc"
+ANALYST_UUID="87654321-4321-4321-4321-cba987654321"
 
 # 1. Check current permissions
 echo "Current permissions for $DATASET_RID:"
@@ -383,29 +385,16 @@ pltr resource-role list $DATASET_RID --format table
 # 2. Set up team-based permissions
 echo "Setting up team permissions..."
 
-# Grant data team full access
-pltr resource-role grant $DATASET_RID data-team Group owner
-pltr resource-role grant $DATASET_RID analytics-team Group editor
+# Grant data team access
+pltr resource-role grant "$DATASET_RID" \
+  --principal-id "$TEAM_UUID" --principal-type Group --role ROLE_ID
 
-# Grant individual analysts viewer access
-pltr resource-role grant $DATASET_RID john.analyst User viewer
-pltr resource-role grant $DATASET_RID jane.analyst User viewer
+# Grant an individual analyst access
+pltr resource-role grant "$DATASET_RID" \
+  --principal-id "$ANALYST_UUID" --principal-type User --role ROLE_ID
 
-# 3. Bulk permission setup for multiple users
-pltr resource-role bulk-grant $DATASET_RID '[
-  {"principal_id": "trainee1", "principal_type": "User", "role_name": "viewer"},
-  {"principal_id": "trainee2", "principal_type": "User", "role_name": "viewer"},
-  {"principal_id": "external-consultant", "principal_type": "User", "role_name": "viewer"}
-]'
-
-# 4. Review available roles for this resource type
-echo "Available roles for this resource:"
-pltr resource-role available-roles $DATASET_RID --format table
-
-# 5. Audit: Check what permissions a specific user has
-echo "Checking permissions for john.analyst:"
-pltr resource-role get-principal-roles john.analyst User \
-  --resource-rid $DATASET_RID --format table
+# Review current permissions
+pltr resource-role list "$DATASET_RID" --format table
 
 echo "Permission management complete!"
 ```
@@ -433,10 +422,10 @@ pltr resource list --folder-rid $ANALYTICS_FOLDER --format json --output folder_
 RESOURCE_RIDS=$(cat customer_datasets.json | jq -r '.[].rid' | head -10 | tr '\n' ' ')
 pltr resource batch-get $RESOURCE_RIDS --format json --output resource_details.json
 
-# 4. Create metadata inventory
+# 4. Create resource-details inventory
 for dataset_rid in $(cat customer_datasets.json | jq -r '.[].rid'); do
-  echo "Getting metadata for: $dataset_rid"
-  pltr resource metadata get $dataset_rid --format json --output "metadata_${dataset_rid##*.}.json"
+  echo "Getting resource details for: $dataset_rid"
+  pltr resource get $dataset_rid --format json --output "resource_${dataset_rid##*.}.json"
   sleep 1  # Rate limiting
 done
 

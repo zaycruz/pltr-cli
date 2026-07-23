@@ -46,59 +46,33 @@ pltr resource-role list $DATASET_RID
 
 # Filter by users only
 pltr resource-role list $DATASET_RID --principal-type User
-
-# Check specific user's permissions
-pltr resource-role get-principal-roles john.doe User --resource-rid $DATASET_RID
 ```
 
 ### Grant Permissions
 
 ```bash
 DATASET_RID="ri.foundry.main.dataset.customer-data"
+USER_UUID="12345678-1234-1234-1234-123456789abc"
+GROUP_UUID="87654321-4321-4321-4321-cba987654321"
 
 # Grant to individual users
-pltr resource-role grant $DATASET_RID john.doe User viewer
-pltr resource-role grant $DATASET_RID jane.smith User editor
+pltr resource-role grant "$DATASET_RID" \
+  --principal-id "$USER_UUID" --principal-type User --role ROLE_ID
 
 # Grant to groups
-pltr resource-role grant $DATASET_RID data-team Group owner
-pltr resource-role grant $DATASET_RID analytics-team Group editor
-```
-
-### Bulk Permission Setup
-
-```bash
-DATASET_RID="ri.foundry.main.dataset.customer-data"
-
-# Bulk grant multiple permissions
-pltr resource-role bulk-grant $DATASET_RID '[
-  {"principal_id": "trainee1", "principal_type": "User", "role_name": "viewer"},
-  {"principal_id": "trainee2", "principal_type": "User", "role_name": "viewer"},
-  {"principal_id": "analyst-team", "principal_type": "Group", "role_name": "editor"},
-  {"principal_id": "external-consultant", "principal_type": "User", "role_name": "viewer"}
-]'
+pltr resource-role grant "$DATASET_RID" \
+  --principal-id "$GROUP_UUID" --principal-type Group --role ROLE_ID
 ```
 
 ### Revoke Permissions
 
 ```bash
 DATASET_RID="ri.foundry.main.dataset.customer-data"
+USER_UUID="12345678-1234-1234-1234-123456789abc"
 
 # Revoke individual
-pltr resource-role revoke $DATASET_RID john.doe User viewer
-
-# Bulk revoke
-pltr resource-role bulk-revoke $DATASET_RID '[
-  {"principal_id": "old-employee", "principal_type": "User", "role_name": "editor"},
-  {"principal_id": "deprecated-team", "principal_type": "Group", "role_name": "viewer"}
-]'
-```
-
-### Check Available Roles
-
-```bash
-# List available roles for resource type
-pltr resource-role available-roles ri.foundry.main.dataset.abc123
+pltr resource-role revoke "$DATASET_RID" \
+  --principal-id "$USER_UUID" --principal-type User --role ROLE_ID
 ```
 
 ## Permission Audit Script
@@ -114,10 +88,6 @@ echo ""
 
 echo "Current permissions:"
 pltr resource-role list $DATASET_RID --format table
-
-echo ""
-echo "Available roles:"
-pltr resource-role available-roles $DATASET_RID --format table
 
 echo ""
 echo "Audit complete at $(date)"
@@ -177,11 +147,11 @@ for rid in $(cat sales.json | jq -r '.[].rid'); do
 done
 ```
 
-### Get Resource Metadata
+### Get Resource Details
 
 ```bash
-# Get metadata for a resource
-pltr resource get-metadata ri.foundry.main.dataset.sales-analytics --format json
+# Get details for a resource
+pltr resource get ri.foundry.main.dataset.sales-analytics --format json
 ```
 
 ## Security Audit
