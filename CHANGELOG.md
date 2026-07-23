@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [0.22.0] - 2026-07-23
+
+### Added
+
+- Added `pltr folder move` for relocating a folder to a new parent.
+
+### Documentation
+
+- Documented the release-script metadata-version fix under `docs/solutions/runtime-errors/`.
+
+
 ## [0.21.0] - 2026-07-23
 
 ### Added
