@@ -215,7 +215,6 @@ def render_agent_message(
     )
 
 
-
 def buffer_agent_payload(
     data: Any = None,
     *,

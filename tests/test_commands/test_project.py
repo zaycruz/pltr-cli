@@ -4,7 +4,10 @@ from unittest.mock import Mock, patch
 
 from typer.testing import CliRunner
 
+from io import StringIO
+
 from pltr.commands.project import app
+from pltr.utils.agent_output import flush_agent_output
 from pltr.services.compass import UnsupportedCapabilityError
 from pltr.utils.pagination import PaginationMetadata, PaginationResult
 
@@ -57,8 +60,10 @@ def test_project_search_agent_output_is_enveloped() -> None:
         result = runner.invoke(app, ["search", "project"])
 
     assert result.exit_code == 0
-    assert '"schema_version": "pltr-agent-v1"' in result.stdout
-    assert '"next_page_token": "next"' in result.stdout
+    rendered = flush_agent_output(StringIO())
+    assert rendered is not None
+    assert '"schema_version": "pltr-agent-v1"' in rendered
+    assert '"next_page_token": "next"' in rendered
 
 
 def test_project_templates_report_public_api_blocker() -> None:

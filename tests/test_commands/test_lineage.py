@@ -4,7 +4,10 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
+from io import StringIO
+
 from pltr.commands.lineage import app
+from pltr.utils.agent_output import flush_agent_output
 
 runner = CliRunner()
 
@@ -26,8 +29,10 @@ def test_lineage_graph_agent_output_contains_coverage() -> None:
         result = runner.invoke(app, ["ri.foundry.main.dataset.1"])
 
     assert result.exit_code == 0
-    assert '"operation": "get_resource_graph"' in result.stdout
-    assert "incomplete" in result.stdout
+    rendered = flush_agent_output(StringIO())
+    assert rendered is not None
+    assert '"operation": "get_resource_graph"' in rendered
+    assert "incomplete" in rendered
 
 
 def test_lineage_graph_forwards_limits() -> None:

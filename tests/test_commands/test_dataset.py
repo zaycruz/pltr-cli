@@ -6,7 +6,10 @@ import pytest
 from unittest.mock import Mock, patch
 from typer.testing import CliRunner
 
+from io import StringIO
+
 from pltr.commands.dataset import app
+from pltr.utils.agent_output import flush_agent_output
 from pltr.auth.base import ProfileNotFoundError, MissingCredentialsError
 
 runner = CliRunner()
@@ -71,8 +74,12 @@ def test_dataset_stats_success_and_pagination(mock_dataset_service):
         max_pages=1,
         fetch_all=True,
     )
-    assert '"schema_version": "pltr-agent-v1"' in result.stdout
-    assert '"next_page_token": "next"' in result.stdout
+    # The root callback owns the single flush, so a sub-app invocation drains
+    # the buffer here. End-to-end stdout is covered by the envelope contract.
+    rendered = flush_agent_output(StringIO())
+    assert rendered is not None
+    assert '"schema_version": "pltr-agent-v1"' in rendered
+    assert '"next_page_token": "next"' in rendered
 
 
 def test_get_dataset_success(mock_dataset_service, sample_dataset):
