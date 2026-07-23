@@ -167,9 +167,7 @@ def move_folder(
 
         service = FolderService(profile=profile)
 
-        with SpinnerProgressTracker().track_spinner(
-            f"Moving folder {folder_rid}..."
-        ):
+        with SpinnerProgressTracker().track_spinner(f"Moving folder {folder_rid}..."):
             folder = service.move_folder(
                 folder_rid=folder_rid,
                 parent_folder_rid=parent_folder_rid,
