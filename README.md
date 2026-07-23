@@ -1,6 +1,6 @@
 # pltr
 
-A command-line interface for Palantir Foundry, built for **agents and CI first**.
+The **agent-native** command-line interface for Palantir Foundry.
 
 `pltr` wraps the official [`foundry-platform-sdk`](https://github.com/palantir/foundry-platform-python) and adds three things a raw SDK does not give you:
 
@@ -8,7 +8,7 @@ A command-line interface for Palantir Foundry, built for **agents and CI first**
 2. **A read-only dependency and change-impact gate.** Before you touch a Foundry resource, `pltr dependency` tells you what breaks — with explicit coverage gaps, provenance, and a CI exit code.
 3. **A drop-in skill bundle.** `skills/pltr-cli/` teaches any coding agent (Claude, Codex, others) how to drive the CLI safely.
 
-Human use is fully supported too — Rich tables, an interactive shell, and 100+ commands across datasets, SQL, ontology, orchestration, filesystem, and admin. But the design bias is automation.
+**Agent-native by design.** The JSON contract, the change-impact gate, and the skill bundle are not add-ons bolted onto a human tool — they are why this fork exists: to let an autonomous agent operate Foundry safely and cheaply, with no human in the loop. Human use is fully supported too — Rich tables, an interactive shell, multi-profile switching, and 100+ commands across datasets, SQL, ontology, orchestration, filesystem, and admin.
 
 > This is a fork of [`anjor/pltr-cli`](https://github.com/anjor/pltr-cli). The agent contract, the dependency system, the skill bundle, and optional Langfuse tracing are additions in this fork.
 
@@ -165,6 +165,16 @@ Full command list: `pltr --help`, or per command `pltr <command> --help`. See th
 ---
 
 ## Configuration
+
+Manage multiple Foundry environments as named **profiles** — switch the default, or pick one per command:
+
+```bash
+pltr configure configure          # add or edit a profile (interactive)
+pltr configure list               # list profiles
+pltr configure use <name>         # switch the default profile
+pltr configure delete <name>      # remove a profile
+pltr <command> --profile <name>   # use a specific profile for one command
+```
 
 - **Profiles:** `~/.config/pltr/profiles.json`
 - **Credentials:** encrypted in the system keyring
