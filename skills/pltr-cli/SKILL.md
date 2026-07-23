@@ -39,6 +39,12 @@ pltr-cli is a comprehensive CLI with 100+ commands for:
 - **Dependency analysis**: Evidence-backed dependency paths, coverage gaps, provenance, and complete local graph artifacts
 - **Agent contract**: Stable `pltr-agent-v1` envelopes with resumable pagination for native discovery and dataset statistics
 
+## Command ground truth
+
+Run `pltr agent-manifest` for authoritative command names, arguments, and flags.
+The `reference/*.md` files explain usage and workflows; they are not authoritative.
+When a reference document conflicts with the manifest, follow the manifest.
+
 ## Critical Concepts
 
 ### RID-Based API
