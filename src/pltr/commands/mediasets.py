@@ -7,6 +7,7 @@ from typing import Optional
 from pathlib import Path
 from rich.console import Console
 
+from ..utils.agent_output import require_confirmation
 from ..services.mediasets import MediaSetsService
 from ..utils.formatting import OutputFormatter
 from ..utils.progress import SpinnerProgressTracker
@@ -171,10 +172,11 @@ def commit_transaction(
     """Commit a transaction, making uploaded items available."""
     try:
         if not confirm:
-            typer.confirm(
+            if not require_confirmation(
                 f"Are you sure you want to commit transaction {transaction_id}?",
-                abort=True,
-            )
+                option_name="--confirm",
+            ):
+                raise typer.Abort()
 
         service = MediaSetsService(profile=profile)
 
@@ -209,10 +211,11 @@ def abort_transaction(
     """Abort a transaction, deleting any uploaded items."""
     try:
         if not confirm:
-            typer.confirm(
+            if not require_confirmation(
                 f"Are you sure you want to abort transaction {transaction_id}? This will delete uploaded items.",
-                abort=True,
-            )
+                option_name="--confirm",
+            ):
+                raise typer.Abort()
 
         service = MediaSetsService(profile=profile)
 

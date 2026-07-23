@@ -4,6 +4,7 @@ from typing import Any, Callable, Optional
 
 import typer
 
+from ..utils.agent_output import require_confirmation, resolve_output_format
 from ..services.proposal import (
     ProposalAction,
     ProposalService,
@@ -26,7 +27,7 @@ def _emit(data: Any, output_format: str) -> None:
 
 def _fail(error: Exception, output_format: str) -> None:
     proposal_error = normalize_proposal_error(error)
-    if output_format == "json":
+    if resolve_output_format(output_format) in {"json", "agent"}:
         _emit(proposal_error.to_payload(), "json")
     else:
         formatter.print_error(f"{proposal_error.category}: {proposal_error}")
@@ -301,7 +302,9 @@ def close_proposal(
         current = service.get(kind, proposal_id, parent_rid=parent_rid)
         if not yes:
             target = current.get("title") or current.get("id") or proposal_id
-            if not typer.confirm(f"Close {kind.value} '{target}' ({proposal_id})?"):
+            if not require_confirmation(
+                f"Close {kind.value} '{target}' ({proposal_id})?", option_name="--yes"
+            ):
                 raise ProposalValidationError("Close cancelled")
 
         result = service.close(kind, proposal_id, parent_rid=parent_rid)

@@ -9,6 +9,7 @@ from typing import List, Optional
 import typer
 from rich.console import Console
 
+from ..utils.agent_output import require_confirmation
 from ..services.admin import AdminService
 from ..utils.formatting import OutputFormatter
 from ..utils.progress import SpinnerProgressTracker
@@ -271,8 +272,9 @@ def revoke_user_tokens(
 
     # Confirmation prompt
     if not confirm:
-        user_confirm = typer.confirm(
-            f"Are you sure you want to revoke all tokens for user {user_id}?"
+        user_confirm = require_confirmation(
+            f"Are you sure you want to revoke all tokens for user {user_id}?",
+            option_name="--confirm",
         )
         if not user_confirm:
             console.print("Operation cancelled.")
@@ -306,7 +308,9 @@ def delete_user(
 
     # Confirmation prompt
     if not confirm:
-        user_confirm = typer.confirm(f"Are you sure you want to delete user {user_id}?")
+        user_confirm = require_confirmation(
+            f"Are you sure you want to delete user {user_id}?", option_name="--confirm"
+        )
         if not user_confirm:
             console.print("Operation cancelled.")
             return
@@ -553,8 +557,9 @@ def delete_group(
 
     # Confirmation prompt
     if not confirm:
-        user_confirm = typer.confirm(
-            f"Are you sure you want to delete group {group_id}?"
+        user_confirm = require_confirmation(
+            f"Are you sure you want to delete group {group_id}?",
+            option_name="--confirm",
         )
         if not user_confirm:
             console.print("Operation cancelled.")
@@ -795,8 +800,9 @@ def replace_organization(
     formatter = OutputFormatter()
 
     if not confirm:
-        user_confirm = typer.confirm(
-            f"Are you sure you want to replace organization {organization_rid}?"
+        user_confirm = require_confirmation(
+            f"Are you sure you want to replace organization {organization_rid}?",
+            option_name="--confirm",
         )
         if not user_confirm:
             console.print("Operation cancelled.")
@@ -1053,8 +1059,9 @@ def replace_marking(
     formatter = OutputFormatter()
 
     if not confirm:
-        user_confirm = typer.confirm(
-            f"Are you sure you want to replace marking {marking_id}?"
+        user_confirm = require_confirmation(
+            f"Are you sure you want to replace marking {marking_id}?",
+            option_name="--confirm",
         )
         if not user_confirm:
             console.print("Operation cancelled.")

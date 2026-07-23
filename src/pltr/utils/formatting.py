@@ -15,8 +15,9 @@ from rich import print as rich_print
 
 from .agent_output import (
     agent_mode_enabled,
+    buffer_agent_message,
+    buffer_agent_payload,
     render_agent_json,
-    render_agent_message,
     resolve_output_format,
 )
 
@@ -84,7 +85,14 @@ class OutputFormatter:
         """Render one already-complete dependency analysis without rediscovery."""
         format_type = resolve_output_format(format_type)
         if format_type == "agent":
-            rendered = render_agent_json(result, meta={"result_type": "dependency"})
+            # --output-mode agent asks for the compact impact contract. Emitting
+            # the whole graph here shipped ~4x the tokens the caller asked for.
+            payload = (
+                self._dependency_agent_payload(result)
+                if output_mode == "agent"
+                else result
+            )
+            rendered = render_agent_json(payload, meta={"result_type": "dependency"})
         elif format_type == "json":
             rendered = (
                 json.dumps(
@@ -108,11 +116,22 @@ class OutputFormatter:
                 output_file=output_file,
                 protected_output_file=protected_output_file,
             )
+        elif format_type == "agent":
+            buffer_agent_payload(payload, meta={"result_type": "dependency"})
         elif format_type in {"json", "csv"}:
             print(rendered, end="")
         else:
             self.console.print(rendered, markup=False, highlight=False, end="")
         return rendered
+
+    @staticmethod
+    def _dependency_agent_payload(result: Dict[str, Any]) -> Dict[str, Any]:
+        """Keep only the blocks the compact agent contract promises."""
+        return {
+            key: result[key]
+            for key in ("target", "agent", "artifact", "budget", "summary")
+            if key in result
+        }
 
     @staticmethod
     def _write_dependency_output(
@@ -453,7 +472,7 @@ class OutputFormatter:
             with open(output_file, "w", encoding="utf-8") as handle:
                 handle.write(rendered)
             return None
-        print(rendered, end="")
+        buffer_agent_payload(data, meta={"result_type": type(data).__name__})
         return rendered
 
     def _format_json(
@@ -727,28 +746,28 @@ class OutputFormatter:
     def print_success(self, message: str):
         """Print success message with formatting."""
         if agent_mode_enabled():
-            print(render_agent_message(message, level="success"), end="")
+            buffer_agent_message(message, level="success")
             return
         self.console.print(f"✅ {message}", style="green")
 
     def print_error(self, message: str):
         """Print error message with formatting."""
         if agent_mode_enabled():
-            print(render_agent_message(message, level="error"), end="")
+            buffer_agent_message(message, level="error")
             return
         self.console.print(f"❌ {message}", style="red")
 
     def print_warning(self, message: str):
         """Print warning message with formatting."""
         if agent_mode_enabled():
-            print(render_agent_message(message, level="warning"), end="")
+            buffer_agent_message(message, level="warning")
             return
         self.console.print(f"⚠️  {message}", style="yellow")
 
     def print_info(self, message: str):
         """Print info message with formatting."""
         if agent_mode_enabled():
-            print(render_agent_message(message), end="")
+            buffer_agent_message(message, level="info")
             return
         self.console.print(f"ℹ️  {message}", style="blue")
 
@@ -848,7 +867,7 @@ class OutputFormatter:
         else:
             # For simple values, just print them
             if format_type == "agent":
-                print(render_agent_json(data, meta={"result_type": "scalar"}), end="")
+                buffer_agent_payload(data, meta={"result_type": "scalar"})
             elif format_type == "json":
                 # Use plain print to ensure valid JSON output without ANSI codes
                 print(json.dumps(data, indent=2, default=str))
@@ -942,7 +961,11 @@ class OutputFormatter:
                         with open(output_file, "w", encoding="utf-8") as handle:
                             handle.write(rendered)
                         return None
-                    print(rendered, end="")
+                    buffer_agent_payload(
+                        data,
+                        meta={"result_type": "paginated"},
+                        pagination=output_data["pagination"],
+                    )
                     return rendered
                 return self._format_json(output_data, output_file)
             else:
@@ -955,7 +978,7 @@ class OutputFormatter:
                         with open(output_file, "w", encoding="utf-8") as handle:
                             handle.write(rendered)
                         return None
-                    print(rendered, end="")
+                    buffer_agent_payload(data, meta={"result_type": "paginated"})
                     return rendered
                 return self._format_json(data, output_file)
 

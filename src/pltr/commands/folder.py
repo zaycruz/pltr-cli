@@ -7,6 +7,7 @@ from typing import Optional, List
 from rich.console import Console
 from rich.table import Table
 
+from ..utils.agent_output import require_confirmation, resolve_output_format
 from ..services.folder import FolderService
 from ..utils.formatting import OutputFormatter
 from ..utils.progress import SpinnerProgressTracker
@@ -61,7 +62,7 @@ def create_folder(
         formatter.print_info(f"Folder RID: {folder.get('rid', 'unknown')}")
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             formatter.format_dict(folder, format=format)
         elif format == "csv":
             formatter.format_list([folder], format=format)
@@ -106,7 +107,7 @@ def get_folder(
             folder = service.get_folder(folder_rid)
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(folder, output, "json")
             else:
@@ -158,8 +159,9 @@ def move_folder(
     """Move a folder to a new parent, optionally renaming it."""
     try:
         if not confirm:
-            confirmed = typer.confirm(
-                f"Move folder {folder_rid} to {parent_folder_rid}?"
+            confirmed = require_confirmation(
+                f"Move folder {folder_rid} to {parent_folder_rid}?",
+                option_name="--confirm",
             )
             if not confirmed:
                 formatter.print_info("Folder move cancelled.")
@@ -179,7 +181,7 @@ def move_folder(
 
         formatter.print_success(f"Successfully moved folder {folder_rid}")
 
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             formatter.format_dict(folder, format=format)
         elif format == "csv":
             formatter.format_list([folder], format=format)
@@ -235,7 +237,7 @@ def list_children(
             return
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(children, output, "json")
             else:
@@ -293,7 +295,7 @@ def get_folders_batch(
                 cache_rid(folder["rid"])
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(folders, output, "json")
             else:

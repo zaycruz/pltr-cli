@@ -6,6 +6,7 @@ from typing import Optional
 import typer
 from rich import print as rprint
 
+from ..utils.agent_output import require_confirmation
 from pltr.config.aliases import AliasManager
 from pltr.utils.completion import complete_alias_names
 
@@ -80,7 +81,9 @@ def remove(
         raise typer.Exit(1)
 
     if confirm:
-        confirmation = typer.confirm(f"Remove alias '{name}' → {command}?")
+        confirmation = require_confirmation(
+            f"Remove alias '{name}' → {command}?", option_name="--no-confirm"
+        )
         if not confirmation:
             rprint("[yellow]Removal cancelled[/yellow]")
             return
@@ -150,7 +153,9 @@ def clear(
         return
 
     if confirm:
-        confirmation = typer.confirm(f"Clear all {len(aliases)} aliases?")
+        confirmation = require_confirmation(
+            f"Clear all {len(aliases)} aliases?", option_name="--no-confirm"
+        )
         if not confirmation:
             rprint("[yellow]Clear cancelled[/yellow]")
             return
@@ -206,7 +211,9 @@ def import_aliases(
 
     # Clear existing aliases if not merging
     if not merge and manager.list_aliases():
-        confirmation = typer.confirm("Replace existing aliases?")
+        confirmation = require_confirmation(
+            "Replace existing aliases?", option_name="--merge"
+        )
         if not confirmation:
             rprint("[yellow]Import cancelled[/yellow]")
             return

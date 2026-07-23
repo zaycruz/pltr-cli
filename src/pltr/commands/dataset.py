@@ -7,7 +7,13 @@ from typing import Optional
 from rich.console import Console
 
 from ..services.dataset import DatasetService
-from ..utils.agent_output import agent_mode_enabled, render_agent_json
+from ..utils.agent_output import (
+    agent_mode_enabled,
+    buffer_agent_payload,
+    render_agent_json,
+    require_confirmation,
+    resolve_output_format,
+)
 from ..utils.formatting import OutputFormatter
 from ..utils.pagination import PaginationConfig
 from ..utils.progress import SpinnerProgressTracker
@@ -131,8 +137,13 @@ def get_dataset_stats(
                 with open(output, "w", encoding="utf-8") as handle:
                     handle.write(rendered)
             else:
-                print(rendered, end="")
-        elif format == "json":
+                buffer_agent_payload(
+                    payload,
+                    meta={"operation": "get_dataset_stats"},
+                    warnings=warnings,
+                    pagination=pagination,
+                )
+        elif resolve_output_format(format) in {"json", "agent"}:
             formatter.format_dict(stats, format, output)
         else:
             formatter.format_dict(stats, format, output)
@@ -230,7 +241,7 @@ def get_schema(
             schema = service.get_schema(dataset_rid)
 
         # Format schema for display
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             formatter._format_json(schema, output)
         else:
             formatter.print_info(f"Dataset: {dataset_rid}")
@@ -558,9 +569,10 @@ def delete_branch(
 
         # Confirmation prompt
         if not confirm:
-            confirmed = typer.confirm(
+            confirmed = require_confirmation(
                 f"Are you sure you want to delete branch '{branch_name}' from dataset {dataset_rid}? "
-                f"This action cannot be undone."
+                f"This action cannot be undone.",
+                option_name="--confirm",
             )
             if not confirmed:
                 formatter.print_info("Branch deletion cancelled")
@@ -889,8 +901,9 @@ def delete_file(
 
         # Confirmation prompt
         if not confirm:
-            confirmed = typer.confirm(
-                f"Are you sure you want to delete '{file_path}' from dataset {dataset_rid}?"
+            confirmed = require_confirmation(
+                f"Are you sure you want to delete '{file_path}' from dataset {dataset_rid}?",
+                option_name="--confirm",
             )
             if not confirmed:
                 formatter.print_info("File deletion cancelled")
@@ -1100,9 +1113,10 @@ def abort_transaction(
 
         # Confirmation prompt
         if not confirm:
-            confirmed = typer.confirm(
+            confirmed = require_confirmation(
                 f"Are you sure you want to abort transaction {transaction_rid}? "
-                f"This will discard all changes made in this transaction."
+                f"This will discard all changes made in this transaction.",
+                option_name="--confirm",
             )
             if not confirmed:
                 formatter.print_info("Transaction abort cancelled")
@@ -1380,7 +1394,7 @@ def add_backing_datasets(
         formatter.print_info(f"View RID: {view_rid}")
         formatter.print_info(f"Added datasets: {', '.join(dataset_rids)}")
 
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             formatter._format_json(result)
 
     except (ProfileNotFoundError, MissingCredentialsError) as e:
@@ -1424,7 +1438,7 @@ def remove_backing_datasets(
         formatter.print_info(f"View RID: {view_rid}")
         formatter.print_info(f"Removed datasets: {', '.join(dataset_rids)}")
 
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             formatter._format_json(result)
 
     except (ProfileNotFoundError, MissingCredentialsError) as e:
@@ -1468,7 +1482,7 @@ def replace_backing_datasets(
         formatter.print_info(f"View RID: {view_rid}")
         formatter.print_info(f"New datasets: {', '.join(dataset_rids)}")
 
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             formatter._format_json(result)
 
     except (ProfileNotFoundError, MissingCredentialsError) as e:
@@ -1512,7 +1526,7 @@ def add_primary_key(
         formatter.print_info(f"View RID: {view_rid}")
         formatter.print_info(f"Primary key fields: {', '.join(key_fields)}")
 
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             formatter._format_json(result)
 
     except (ProfileNotFoundError, MissingCredentialsError) as e:

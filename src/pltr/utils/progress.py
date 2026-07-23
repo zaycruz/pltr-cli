@@ -2,10 +2,11 @@
 Progress bar utilities for long-running operations.
 """
 
-from typing import Optional, Iterator, Any, Union
+from typing import Optional, Iterator, Any, Dict, Union
 from pathlib import Path
 from contextlib import contextmanager
 
+from rich.console import Console
 from rich.progress import (
     Progress,
     TextColumn,
@@ -17,6 +18,21 @@ from rich.progress import (
     TransferSpeedColumn,
     SpinnerColumn,
 )
+
+from .agent_output import agent_mode_enabled
+
+
+def _progress_kwargs() -> Dict[str, Any]:
+    """Keep progress rendering off stdout, and off entirely for agents.
+
+    Progress frames are decoration, not results. On stdout they corrupt the
+    agent envelope and any piped JSON/CSV, so they go to stderr and are
+    disabled outright when the caller asked for the agent contract.
+    """
+    return {
+        "console": Console(stderr=True),
+        "disable": agent_mode_enabled(),
+    }
 
 
 class FileProgressTracker:
@@ -62,7 +78,7 @@ class FileProgressTracker:
         if self.show_speed:
             columns.append(TransferSpeedColumn())
 
-        with Progress(*columns) as progress:
+        with Progress(*columns, **_progress_kwargs()) as progress:
             self._progress = progress
             task_id = progress.add_task(description, total=total_size)
 
@@ -113,7 +129,7 @@ class FileProgressTracker:
             if self.show_speed:
                 columns.append(TransferSpeedColumn())
 
-        with Progress(*columns) as progress:
+        with Progress(*columns, **_progress_kwargs()) as progress:
             self._progress = progress
             task_id = progress.add_task(description, total=total_size)
 
@@ -149,7 +165,7 @@ class FileProgressTracker:
         if total:
             columns.append(TimeRemainingColumn())
 
-        with Progress(*columns) as progress:
+        with Progress(*columns, **_progress_kwargs()) as progress:
             self._progress = progress
             task_id = progress.add_task(description, total=total)
 
@@ -186,7 +202,7 @@ class SpinnerProgressTracker:
             TextColumn("[bold cyan]{task.description}"),
         ]
 
-        with Progress(*columns, transient=True) as progress:
+        with Progress(*columns, transient=True, **_progress_kwargs()) as progress:
             self._progress = progress
             progress.add_task(description)
 

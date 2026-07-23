@@ -7,6 +7,7 @@ import json
 from typing import Optional
 from rich.console import Console
 
+from ..utils.agent_output import require_confirmation
 from ..services.orchestration import OrchestrationService
 from ..utils.formatting import OutputFormatter
 from ..utils.pagination import PaginationConfig
@@ -587,9 +588,11 @@ def delete_schedule(
     """Delete a schedule."""
     try:
         if not confirm:
-            typer.confirm(
-                f"Are you sure you want to delete schedule {schedule_rid}?", abort=True
-            )
+            if not require_confirmation(
+                f"Are you sure you want to delete schedule {schedule_rid}?",
+                option_name="--confirm",
+            ):
+                raise typer.Abort()
 
         service = OrchestrationService(profile=profile)
 

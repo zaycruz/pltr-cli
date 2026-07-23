@@ -9,7 +9,11 @@ from typing import Any, Iterator, Mapping
 import click
 import typer
 
-from ..utils.agent_output import agent_mode_enabled, render_agent_json
+from ..utils.agent_output import (
+    agent_mode_enabled,
+    buffer_agent_payload,
+    render_agent_json,
+)
 
 
 GRAMMAR_MANIFEST_SCHEMA_VERSION = "pltr-cli-command-manifest-v1"
@@ -97,7 +101,10 @@ def agent_manifest(ctx: typer.Context) -> None:
     """Emit the registered CLI grammar as deterministic JSON."""
     try:
         manifest = build_manifest(ctx.find_root().command)
-        typer.echo(render_manifest(manifest, agent=agent_mode_enabled()), nl=False)
+        if agent_mode_enabled():
+            buffer_agent_payload(manifest, meta={"result_type": "grammar_manifest"})
+        else:
+            typer.echo(render_manifest(manifest), nl=False)
     except Exception as error:
         typer.echo(f"Error emitting agent manifest: {error}", err=True)
         raise typer.Exit(1) from error

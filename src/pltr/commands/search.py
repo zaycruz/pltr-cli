@@ -12,6 +12,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from ..utils.agent_output import resolve_output_format
 from ..auth.base import MissingCredentialsError, ProfileNotFoundError
 from ..services.foundry_internal_client import TokenExpiredError
 from ..services.search import SearchService
@@ -113,7 +114,7 @@ def _render_result(
     rendered_result = dict(result)
     if result.get("status") == "inconclusive":
         rendered_result["warning"] = _inconclusive_banner(result)
-    if format_type == "json":
+    if resolve_output_format(format_type) in {"json", "agent"}:
         return json.dumps(rendered_result, indent=2, sort_keys=True) + "\n"
     if format_type == "csv":
         return _render_csv(rendered_result)
