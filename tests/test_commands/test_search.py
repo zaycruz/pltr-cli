@@ -218,9 +218,7 @@ def test_unwritable_output_path_exits_one_without_traceback(tmp_path):
     unwritable = tmp_path / "missing-dir" / "out.txt"
     with patch("pltr.commands.search.SearchService") as service:
         service.return_value.search.return_value = _ok_payload()
-        result = runner.invoke(
-            app, ["search", "Flight", "--output", str(unwritable)]
-        )
+        result = runner.invoke(app, ["search", "Flight", "--output", str(unwritable)])
 
     assert result.exit_code == 1
     assert "Error writing output file" in result.output
