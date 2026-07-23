@@ -16,6 +16,21 @@ An **agent-native** fork of the command-line interface for Palantir Foundry.
 
 ## Install
 
+### One-paste install — hand this to your agent
+
+Copy the block below into Claude Code, Codex, or any coding agent. It installs, authenticates, and verifies `pltr` for you:
+
+```
+Install the pltr CLI (Palantir Foundry) for me, end to end:
+1. Install from git: `uv pip install "git+https://github.com/zaycruz/pltr-cli"` (fall back to `pip install "git+https://github.com/zaycruz/pltr-cli"` if uv is missing).
+2. Confirm it works: run `pltr --help` and show me the command groups.
+3. Set up auth: ask me for my Foundry host and API token, then export FOUNDRY_HOST and FOUNDRY_TOKEN, or run `pltr configure configure`. I may have more than one Foundry environment — support named profiles.
+4. Verify the connection: run `pltr verify`.
+5. For automation, note that every command accepts `--agent` for a stable JSON envelope; run `pltr --agent capabilities` to show the machine-readable command surface.
+```
+
+### Install it yourself
+
 Installed from git (not published to PyPI). Upstream `anjor/pltr-cli` is on PyPI; this fork is not, so install it by URL. The command is still `pltr`.
 
 ```bash
