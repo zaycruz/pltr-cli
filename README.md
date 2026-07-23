@@ -14,6 +14,58 @@ An **agent-native** fork of the command-line interface for Palantir Foundry.
 
 ---
 
+## Install
+
+### One-paste install — hand this to your agent
+
+Copy the block below into Claude Code, Codex, or any coding agent. It installs, authenticates, and verifies `pltr` for you:
+
+```
+Install the pltr CLI (Palantir Foundry) for me, end to end:
+1. Install from git: `uv pip install "git+https://github.com/zaycruz/pltr-cli"` (fall back to `pip install "git+https://github.com/zaycruz/pltr-cli"` if uv is missing).
+2. Confirm it works: run `pltr --help` and show me the command groups.
+3. Set up auth: ask me for my Foundry host and API token, then export FOUNDRY_HOST and FOUNDRY_TOKEN, or run `pltr configure configure`. I may have more than one Foundry environment — support named profiles.
+4. Verify the connection: run `pltr verify`.
+5. For automation, note that every command accepts `--agent` for a stable JSON envelope; run `pltr --agent capabilities` to show the machine-readable command surface.
+```
+
+### Install it yourself
+
+Installed from git (not published to PyPI). Upstream `anjor/pltr-cli` is on PyPI; this fork is not, so install it by URL. The command is still `pltr`.
+
+```bash
+uv pip install "git+https://github.com/zaycruz/pltr-cli"
+```
+
+Or clone for development:
+
+```bash
+git clone https://github.com/zaycruz/pltr-cli.git
+cd pltr-cli
+uv sync
+uv run pltr --help
+```
+
+---
+
+## Authenticate
+
+```bash
+# Interactive setup (token or OAuth2). Credentials go in the system keyring, never plain text.
+pltr configure configure
+
+# Or use environment variables (CI / automation):
+export FOUNDRY_TOKEN="your-api-token"
+export FOUNDRY_HOST="foundry.company.com"
+
+# Confirm it works:
+pltr verify
+```
+
+OAuth2 uses `FOUNDRY_CLIENT_ID` and `FOUNDRY_CLIENT_SECRET` instead of `FOUNDRY_TOKEN`. See [Authentication Setup](docs/user-guide/authentication.md).
+
+---
+
 ## What this fork adds
 
 Eight capability areas and two global flags that upstream does not have:
@@ -55,56 +107,6 @@ Eight capability areas and two global flags that upstream does not have:
 ### Agent skill bundle
 
 `skills/pltr-cli/` is a drop-in, model-agnostic bundle that teaches any coding agent to drive `pltr` safely — including the mandatory change-impact gate before any Foundry mutation. [Details below](#skill-bundle-for-coding-agents).
-
----
-
-## Install
-
-### One-paste install — hand this to your agent
-
-Copy the block below into Claude Code, Codex, or any coding agent. It installs, authenticates, and verifies `pltr` for you:
-
-```
-Install the pltr CLI (Palantir Foundry) for me, end to end:
-1. Install from git: `uv pip install "git+https://github.com/zaycruz/pltr-cli"` (fall back to `pip install "git+https://github.com/zaycruz/pltr-cli"` if uv is missing).
-2. Confirm it works: run `pltr --help` and show me the command groups.
-3. Set up auth: ask me for my Foundry host and API token, then export FOUNDRY_HOST and FOUNDRY_TOKEN, or run `pltr configure configure`. I may have more than one Foundry environment — support named profiles.
-4. Verify the connection: run `pltr verify`.
-5. For automation, note that every command accepts `--agent` for a stable JSON envelope; run `pltr --agent capabilities` to show the machine-readable command surface.
-```
-
-### Install it yourself
-
-Installed from git (not published to PyPI). Upstream `anjor/pltr-cli` is on PyPI; this fork is not, so install it by URL. The command is still `pltr`.
-
-```bash
-uv pip install "git+https://github.com/zaycruz/pltr-cli"
-```
-
-Or clone for development:
-
-```bash
-git clone https://github.com/zaycruz/pltr-cli.git
-cd pltr-cli
-uv sync
-uv run pltr --help
-```
-
-## Authenticate
-
-```bash
-# Interactive setup (token or OAuth2). Credentials go in the system keyring, never plain text.
-pltr configure configure
-
-# Or use environment variables (CI / automation):
-export FOUNDRY_TOKEN="your-api-token"
-export FOUNDRY_HOST="foundry.company.com"
-
-# Confirm it works:
-pltr verify
-```
-
-OAuth2 uses `FOUNDRY_CLIENT_ID` and `FOUNDRY_CLIENT_SECRET` instead of `FOUNDRY_TOKEN`. See [Authentication Setup](docs/user-guide/authentication.md).
 
 ---
 
