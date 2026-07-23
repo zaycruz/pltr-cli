@@ -1,8 +1,8 @@
-# pltr
+# pltr-cli
 
-> A command-line interface for Palantir Foundry, built for agents and CI first. It wraps the official foundry-platform-sdk and adds a stable JSON agent contract (pltr-agent-v1), a read-only dependency / change-impact gate, and a drop-in skill bundle for coding agents.
+> An agent-native fork of anjor/pltr-cli (https://github.com/anjor/pltr-cli), the original command-line interface for Palantir Foundry by @anjor. The fork wraps the same official foundry-platform-sdk and adds a stable JSON agent contract (pltr-agent-v1), a read-only dependency / change-impact gate, and a drop-in skill bundle for coding agents.
 
-This fork is installed from git (not PyPI). The installed command is `pltr`.
+All credit for the base CLI goes to @anjor. This fork is MIT-licensed like upstream. Upstream is on PyPI; this fork installs from git only. The installed command is still `pltr`.
 
 ## One-paste install (hand this to your LLM)
 
