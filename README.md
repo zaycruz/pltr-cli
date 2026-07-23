@@ -10,7 +10,51 @@ An **agent-native** fork of the command-line interface for Palantir Foundry.
 2. **A read-only dependency and change-impact gate.** Before you touch a Foundry resource, `pltr dependency` tells you what breaks — with explicit coverage gaps, provenance, and a CI exit code.
 3. **A drop-in skill bundle.** `skills/pltr-cli/` teaches any coding agent (Claude, Codex, others) how to drive the CLI safely.
 
-**Why this fork exists.** The JSON contract, the change-impact gate, and the skill bundle let an autonomous agent operate Foundry safely and cheaply, with no human in the loop. Everything else — Rich tables, the interactive shell, multi-profile switching, and the 100+ commands across datasets, SQL, ontology, orchestration, filesystem, and admin — comes from upstream and still works the same way.
+**Why this fork exists.** The JSON contract, the change-impact gate, and the skill bundle let an autonomous agent operate Foundry safely and cheaply, with no human in the loop. Everything upstream already did — Rich tables, the interactive shell, multi-profile switching, and the commands across datasets, SQL, ontology, orchestration, filesystem, and admin — still works the same way.
+
+---
+
+## What this fork adds
+
+Eight capability areas and two global flags that upstream does not have:
+
+| Area | Upstream | This fork |
+|------|----------|-----------|
+| Machine output | — | `--agent` on any command → one `pltr-agent-v1` JSON envelope |
+| Non-interactive mode | — | `--non-interactive` — no prompts, no envelope switch |
+| Change impact | — | `pltr dependency` — 6 target types, evidence graph, CI exit codes |
+| Grammar discovery | — | `pltr agent-manifest`, `pltr capabilities` |
+| Resource search | — | `pltr search` |
+| Lineage | — | `pltr lineage graph` |
+| Proposals | — | `pltr proposal` — 9 subcommands |
+| Namespaces | — | `pltr namespace list` |
+| Notepads | — | `pltr notepad get` |
+| Agent skill bundle | — | `skills/pltr-cli/` — workflows + 17 references |
+| Tracing | — | optional Langfuse |
+| Leaf commands | 215 | 230 |
+
+### Change-impact gate
+
+`pltr dependency` resolves a Foundry target, walks a bounded dependency graph, and reports what breaks — with explicit coverage gaps, provenance, and a CI exit code. It never mutates Foundry. Six targets: `resource`, `object-type`, `property`, `link-type`, `action-type`, `query-type`. [Details below](#dependency-and-change-impact-analysis).
+
+### Machine-readable grammar
+
+`pltr agent-manifest` emits every registered command as deterministic JSON, so an agent discovers the surface without parsing `--help` text. `pltr capabilities` reports which native agent-first Foundry capabilities are reachable on your stack. [Details below](#agent-interface).
+
+### Proposals
+
+`pltr proposal` drives the full review lifecycle for code pull requests and Ontology Global Proposals: `create`, `list`, `get`, `comment`, `approve`, `request-changes`, `merge`, `accept`, `close`.
+
+### Lineage and discovery
+
+- `pltr lineage graph <rid>` — build a bounded graph from native filesystem relationships.
+- `pltr search <text>` — search Foundry resources by title, read-only.
+- `pltr namespace list` — list top-level Compass Spaces as namespace discovery records.
+- `pltr notepad get <rid>` — read a notepad's latest body and its embedded resource references.
+
+### Agent skill bundle
+
+`skills/pltr-cli/` is a drop-in, model-agnostic bundle that teaches any coding agent to drive `pltr` safely — including the mandatory change-impact gate before any Foundry mutation. [Details below](#skill-bundle-for-coding-agents).
 
 ---
 
