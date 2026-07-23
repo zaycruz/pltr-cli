@@ -179,8 +179,13 @@ class FunctionsService(BaseService):
             >>> print(result)
         """
         try:
-            result = self.service.Query.execute_by_rid(
-                query_rid,
+            query = self.service.Query.get_by_rid(
+                rid=query_rid,
+                preview=preview,
+                version=version,
+            )
+            result = self.service.Query.execute(
+                query.api_name,
                 parameters=parameters or {},
                 preview=preview,
                 version=version,

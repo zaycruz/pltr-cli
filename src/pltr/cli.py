@@ -42,6 +42,7 @@ from pltr.commands import (
     proposal,
     dependency,
     capabilities,
+    agent_manifest,
     notepad,
 )
 from pltr.commands.cp import cp_command
@@ -142,6 +143,7 @@ app.add_typer(
     name="capabilities",
     help="Inspect native agent-first Foundry capabilities",
 )
+app.add_typer(agent_manifest.app, name="agent-manifest")
 app.add_typer(notepad.app, name="notepad", help="Read Foundry notepad contents")
 app.command("search", help="Search Foundry resources by title (read-only)")(
     search_command

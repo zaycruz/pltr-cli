@@ -88,47 +88,6 @@ def get_widget_set(
 # ===== Dev Mode Commands =====
 
 
-@dev_mode_app.command("get")
-def get_dev_mode_settings(
-    profile: Optional[str] = typer.Option(
-        None,
-        "--profile",
-        "-p",
-        help="Profile name",
-        autocompletion=complete_profile,
-    ),
-    format: str = typer.Option(
-        "table",
-        "--format",
-        "-f",
-        help="Output format (table, json, csv)",
-        autocompletion=complete_output_format,
-    ),
-    output: Optional[str] = typer.Option(
-        None, "--output", "-o", help="Output file path"
-    ),
-) -> None:
-    """Get dev mode settings for the current user."""
-    try:
-        service = WidgetsService(profile=profile)
-
-        with SpinnerProgressTracker().track_spinner("Fetching dev mode settings..."):
-            settings = service.get_dev_mode_settings()
-
-        if output:
-            formatter.save_to_file([settings], output, format)
-            formatter.print_success(f"Dev mode settings saved to {output}")
-        else:
-            formatter.display([settings], format)
-
-    except (ProfileNotFoundError, MissingCredentialsError) as e:
-        formatter.print_error(f"Authentication error: {e}")
-        raise typer.Exit(1)
-    except Exception as e:
-        formatter.print_error(f"Failed to get dev mode settings: {e}")
-        raise typer.Exit(1)
-
-
 @dev_mode_app.command("enable")
 def enable_dev_mode(
     profile: Optional[str] = typer.Option(
@@ -161,76 +120,6 @@ def enable_dev_mode(
         raise typer.Exit(1)
     except Exception as e:
         formatter.print_error(f"Failed to enable dev mode: {e}")
-        raise typer.Exit(1)
-
-
-@dev_mode_app.command("disable")
-def disable_dev_mode(
-    profile: Optional[str] = typer.Option(
-        None,
-        "--profile",
-        "-p",
-        help="Profile name",
-        autocompletion=complete_profile,
-    ),
-    format: str = typer.Option(
-        "table",
-        "--format",
-        "-f",
-        help="Output format (table, json, csv)",
-        autocompletion=complete_output_format,
-    ),
-) -> None:
-    """Disable dev mode for the current user."""
-    try:
-        service = WidgetsService(profile=profile)
-
-        with SpinnerProgressTracker().track_spinner("Disabling dev mode..."):
-            settings = service.disable_dev_mode()
-
-        formatter.print_success("Dev mode disabled")
-        formatter.display([settings], format)
-
-    except (ProfileNotFoundError, MissingCredentialsError) as e:
-        formatter.print_error(f"Authentication error: {e}")
-        raise typer.Exit(1)
-    except Exception as e:
-        formatter.print_error(f"Failed to disable dev mode: {e}")
-        raise typer.Exit(1)
-
-
-@dev_mode_app.command("pause")
-def pause_dev_mode(
-    profile: Optional[str] = typer.Option(
-        None,
-        "--profile",
-        "-p",
-        help="Profile name",
-        autocompletion=complete_profile,
-    ),
-    format: str = typer.Option(
-        "table",
-        "--format",
-        "-f",
-        help="Output format (table, json, csv)",
-        autocompletion=complete_output_format,
-    ),
-) -> None:
-    """Pause dev mode for the current user."""
-    try:
-        service = WidgetsService(profile=profile)
-
-        with SpinnerProgressTracker().track_spinner("Pausing dev mode..."):
-            settings = service.pause_dev_mode()
-
-        formatter.print_success("Dev mode paused")
-        formatter.display([settings], format)
-
-    except (ProfileNotFoundError, MissingCredentialsError) as e:
-        formatter.print_error(f"Authentication error: {e}")
-        raise typer.Exit(1)
-    except Exception as e:
-        formatter.print_error(f"Failed to pause dev mode: {e}")
         raise typer.Exit(1)
 
 

@@ -264,11 +264,9 @@ def test_get_transactions_success(mock_dataset_service):
         trans.aborted_time = "2024-01-03T00:10:00Z" if i == 2 else None
         transactions.append(trans)
 
-    mock_dataset_class.Transaction.list.return_value = transactions
+    mock_dataset_class.transactions.return_value = transactions
 
-    result = service.get_transactions(
-        dataset_rid="ri.foundry.main.dataset.test", branch="master"
-    )
+    result = service.get_transactions(dataset_rid="ri.foundry.main.dataset.test")
 
     assert len(result) == 3
     assert result[0]["transaction_rid"] == "ri.foundry.main.transaction.test-0"
@@ -278,8 +276,8 @@ def test_get_transactions_success(mock_dataset_service):
     assert result[2]["status"] == "ABORTED"
     assert result[2]["aborted_time"] == "2024-01-03T00:10:00Z"
 
-    mock_dataset_class.Transaction.list.assert_called_once_with(
-        dataset_rid="ri.foundry.main.dataset.test", branch_name="master"
+    mock_dataset_class.transactions.assert_called_once_with(
+        dataset_rid="ri.foundry.main.dataset.test"
     )
 
 
@@ -288,31 +286,21 @@ def test_get_transactions_empty(mock_dataset_service):
     service, mock_dataset_class = mock_dataset_service
 
     # Mock empty response
-    mock_dataset_class.Transaction.list.return_value = []
+    mock_dataset_class.transactions.return_value = []
 
-    result = service.get_transactions(
-        dataset_rid="ri.foundry.main.dataset.test", branch="master"
-    )
+    result = service.get_transactions(dataset_rid="ri.foundry.main.dataset.test")
 
     assert result == []
 
 
-def test_get_transactions_not_implemented(mock_dataset_service):
-    """Test transaction list when method is not available."""
+def test_get_transactions_error(mock_dataset_service):
+    """Test transaction list error handling."""
     service, mock_dataset_class = mock_dataset_service
 
-    # Mock AttributeError to simulate method not available in Dataset class
-    mock_dataset_class.Transaction.list.side_effect = AttributeError("Method not found")
+    mock_dataset_class.transactions.side_effect = Exception("List failed")
 
-    # Also mock the fallback service.list_transactions to raise AttributeError
-    service.service.list_transactions.side_effect = AttributeError("Method not found")
-
-    with pytest.raises(
-        NotImplementedError, match="Transaction listing is not supported"
-    ):
-        service.get_transactions(
-            dataset_rid="ri.foundry.main.dataset.test", branch="master"
-        )
+    with pytest.raises(RuntimeError, match="Failed to get transactions"):
+        service.get_transactions(dataset_rid="ri.foundry.main.dataset.test")
 
 
 def test_upload_file_with_transaction(mock_dataset_service):

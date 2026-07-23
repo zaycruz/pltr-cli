@@ -68,6 +68,7 @@ def mock_ontology_object_service():
         mock_ontologies = Mock()
         mock_ontology_object_class = Mock()
         mock_ontologies.OntologyObject = mock_ontology_object_class
+        mock_ontologies.LinkedObject = Mock()
         mock_client.ontologies = mock_ontologies
         mock_auth.return_value.get_client.return_value = mock_client
 
@@ -514,8 +515,9 @@ def test_aggregate_objects(mock_ontology_object_service):
 
 def test_list_linked_objects(mock_ontology_object_service, sample_object):
     """Test listing linked objects."""
-    service, mock_ontology_object_class = mock_ontology_object_service
-    mock_ontology_object_class.list_linked_objects.return_value = [sample_object]
+    service, _ = mock_ontology_object_service
+    mock_linked_object_class = service.service.LinkedObject
+    mock_linked_object_class.list_linked_objects.return_value = [sample_object]
 
     result = service.list_linked_objects(
         "ri.ontology.main.ontology.test",
@@ -526,7 +528,14 @@ def test_list_linked_objects(mock_ontology_object_service, sample_object):
 
     assert len(result) == 1
     assert result[0]["employee_id"] == "EMP001"
-    mock_ontology_object_class.list_linked_objects.assert_called_once()
+    mock_linked_object_class.list_linked_objects.assert_called_once_with(
+        "ri.ontology.main.ontology.test",
+        "Employee",
+        "EMP001",
+        "manages",
+        page_size=None,
+        select=None,
+    )
 
 
 def test_count_objects(mock_ontology_object_service):

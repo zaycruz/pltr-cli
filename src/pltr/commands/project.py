@@ -433,43 +433,6 @@ def update_project(
         raise typer.Exit(1)
 
 
-@app.command("delete")
-def delete_project(
-    project_rid: str = typer.Argument(
-        ..., help="Project Resource Identifier", autocompletion=complete_rid
-    ),
-    profile: Optional[str] = typer.Option(
-        None, "--profile", help="Profile name", autocompletion=complete_profile
-    ),
-    confirm: bool = typer.Option(False, "--confirm", help="Skip confirmation prompt"),
-):
-    """Delete a project."""
-    try:
-        if not confirm:
-            confirm_delete = typer.confirm(
-                f"Are you sure you want to delete project {project_rid}?"
-            )
-            if not confirm_delete:
-                formatter.print_info("Project deletion cancelled.")
-                return
-
-        service = ProjectService(profile=profile)
-
-        with SpinnerProgressTracker().track_spinner(
-            f"Deleting project {project_rid}..."
-        ):
-            service.delete_project(project_rid)
-
-        formatter.print_success(f"Successfully deleted project {project_rid}")
-
-    except (ProfileNotFoundError, MissingCredentialsError) as e:
-        formatter.print_error(f"Authentication error: {e}")
-        raise typer.Exit(1)
-    except Exception as e:
-        formatter.print_error(f"Failed to delete project: {e}")
-        raise typer.Exit(1)
-
-
 # ==================== Organization Operations ====================
 
 
@@ -760,8 +723,8 @@ def main():
     """
     Project operations using foundry-platform-sdk.
 
-    Manage projects in the Foundry filesystem. Create, retrieve, update, and delete
-    projects using Resource Identifiers (RIDs).
+    Manage projects in the Foundry filesystem. Create, retrieve, and update projects
+    using Resource Identifiers (RIDs).
 
     Examples:
         # Create a project in a space
@@ -778,9 +741,6 @@ def main():
 
         # Update project
         pltr project update ri.compass.main.project.abc456 --name "Updated Name"
-
-        # Delete project
-        pltr project delete ri.compass.main.project.abc456
 
         # Organization operations
         pltr project add-orgs ri.compass.main.project.abc456 -o org-rid-1 -o org-rid-2

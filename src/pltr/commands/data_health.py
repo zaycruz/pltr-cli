@@ -354,6 +354,11 @@ def delete_check(
 
 @report_app.command("get")
 def get_report(
+    check_rid: str = typer.Argument(
+        ...,
+        help="Check RID (e.g., ri.data-health.main.check.xxx)",
+        autocompletion=complete_rid,
+    ),
     check_report_rid: str = typer.Argument(
         ...,
         help="CheckReport RID (e.g., ri.data-health.main.check-report.xxx)",
@@ -400,14 +405,17 @@ def get_report(
     Examples:
 
         # Get report details
-        pltr data-health report get ri.data-health.main.check-report.abc123
+        pltr data-health report get ri.data-health.main.check.abc123 \
+            ri.data-health.main.check-report.abc123
 
         # Get as JSON
-        pltr data-health report get ri.data-health.main.check-report.abc123 \\
+        pltr data-health report get ri.data-health.main.check.abc123 \
+            ri.data-health.main.check-report.abc123 \\
             --format json
 
         # Save to file
-        pltr data-health report get ri.data-health.main.check-report.abc123 \\
+        pltr data-health report get ri.data-health.main.check.abc123 \
+            ri.data-health.main.check-report.abc123 \\
             --format json \\
             --output report.json
     """
@@ -415,6 +423,7 @@ def get_report(
         with SpinnerProgressTracker().track_spinner("Fetching check report"):
             service = DataHealthService(profile=profile)
             result = service.get_check_report(
+                check_rid=check_rid,
                 check_report_rid=check_report_rid,
                 preview=preview,
             )

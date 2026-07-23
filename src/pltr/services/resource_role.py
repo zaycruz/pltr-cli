@@ -4,6 +4,8 @@ Resource Role service wrapper for Foundry SDK filesystem API.
 
 from typing import Any, Optional, Dict, List
 
+from foundry_sdk.v2.filesystem.models import PrincipalIdOnly, ResourceRoleIdentifier
+
 from .base import BaseService
 
 
@@ -34,18 +36,21 @@ class ResourceRoleService(BaseService):
             Role grant information
         """
         try:
-            role_grant: Dict[str, Any] = {
+            role_grant = ResourceRoleIdentifier(
+                resource_role_principal=PrincipalIdOnly(principal_id=principal_id),
+                role_id=role_name,
+            )
+
+            self.service.Resource.Role.add(
+                resource_rid,
+                roles=[role_grant],
+            )
+            return {
+                "resource_rid": resource_rid,
                 "principal_id": principal_id,
                 "principal_type": principal_type,
                 "role_name": role_name,
             }
-
-            result = self.service.ResourceRole.grant(
-                resource_rid=resource_rid,
-                body=role_grant,
-                preview=True,
-            )
-            return self._format_role_grant(result)
         except Exception as e:
             raise RuntimeError(
                 f"Failed to grant role '{role_name}' to {principal_type} '{principal_id}' on resource {resource_rid}: {e}"
@@ -71,16 +76,14 @@ class ResourceRoleService(BaseService):
             RuntimeError: If revocation fails
         """
         try:
-            role_revocation: Dict[str, Any] = {
-                "principal_id": principal_id,
-                "principal_type": principal_type,
-                "role_name": role_name,
-            }
+            role_revocation = ResourceRoleIdentifier(
+                resource_role_principal=PrincipalIdOnly(principal_id=principal_id),
+                role_id=role_name,
+            )
 
-            self.service.ResourceRole.revoke(
-                resource_rid=resource_rid,
-                body=role_revocation,
-                preview=True,
+            self.service.Resource.Role.remove(
+                resource_rid,
+                roles=[role_revocation],
             )
         except Exception as e:
             raise RuntimeError(
@@ -108,159 +111,28 @@ class ResourceRoleService(BaseService):
         """
         try:
             role_grants = []
-            list_params: Dict[str, Any] = {"preview": True}
-
-            if principal_type:
-                list_params["principal_type"] = principal_type
+            list_params: Dict[str, Any] = {}
             if page_size:
                 list_params["page_size"] = page_size
             if page_token:
                 list_params["page_token"] = page_token
 
             # The list method returns an iterator
-            for role_grant in self.service.ResourceRole.list(
+            for role_grant in self.service.Resource.Role.list(
                 resource_rid, **list_params
             ):
-                role_grants.append(self._format_role_grant(role_grant))
+                formatted = self._format_role_grant(role_grant, resource_rid)
+                if (
+                    principal_type is None
+                    or formatted["principal_type"].casefold()
+                    == principal_type.casefold()
+                ):
+                    role_grants.append(formatted)
             return role_grants
         except Exception as e:
             raise RuntimeError(f"Failed to list roles for resource {resource_rid}: {e}")
 
-    def get_principal_roles(
-        self,
-        principal_id: str,
-        principal_type: str,
-        resource_rid: Optional[str] = None,
-        page_size: Optional[int] = None,
-        page_token: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        """
-        Get all roles granted to a principal, optionally filtered by resource.
-
-        Args:
-            principal_id: Principal (user/group) identifier
-            principal_type: Principal type ('User' or 'Group')
-            resource_rid: Filter by resource RID (optional)
-            page_size: Number of items per page (optional)
-            page_token: Pagination token (optional)
-
-        Returns:
-            List of role grant information dictionaries
-        """
-        try:
-            role_grants = []
-            list_params = {
-                "principal_id": principal_id,
-                "principal_type": principal_type,
-                "preview": True,
-            }
-
-            if resource_rid:
-                list_params["resource_rid"] = resource_rid
-            if page_size:
-                list_params["page_size"] = page_size
-            if page_token:
-                list_params["page_token"] = page_token
-
-            # The get_principal_roles method returns an iterator
-            for role_grant in self.service.ResourceRole.get_principal_roles(
-                **list_params
-            ):
-                role_grants.append(self._format_role_grant(role_grant))
-            return role_grants
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to get roles for {principal_type} '{principal_id}': {e}"
-            )
-
-    def bulk_grant_roles(
-        self,
-        resource_rid: str,
-        role_grants: List[Dict[str, str]],
-    ) -> List[Dict[str, Any]]:
-        """
-        Grant multiple roles in a single request.
-
-        Args:
-            resource_rid: Resource Identifier
-            role_grants: List of role grant specifications, each containing:
-                        - principal_id: Principal identifier
-                        - principal_type: 'User' or 'Group'
-                        - role_name: Role name to grant
-
-        Returns:
-            List of granted role information dictionaries
-        """
-        try:
-            result = self.service.ResourceRole.bulk_grant(
-                resource_rid=resource_rid,
-                body={"role_grants": role_grants},
-                preview=True,
-            )
-
-            granted_roles = []
-            if hasattr(result, "role_grants"):
-                for role_grant in result.role_grants:
-                    granted_roles.append(self._format_role_grant(role_grant))
-
-            return granted_roles
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to bulk grant roles on resource {resource_rid}: {e}"
-            )
-
-    def bulk_revoke_roles(
-        self,
-        resource_rid: str,
-        role_revocations: List[Dict[str, str]],
-    ) -> None:
-        """
-        Revoke multiple roles in a single request.
-
-        Args:
-            resource_rid: Resource Identifier
-            role_revocations: List of role revocation specifications, each containing:
-                            - principal_id: Principal identifier
-                            - principal_type: 'User' or 'Group'
-                            - role_name: Role name to revoke
-
-        Raises:
-            RuntimeError: If revocation fails
-        """
-        try:
-            self.service.ResourceRole.bulk_revoke(
-                resource_rid=resource_rid,
-                body={"role_revocations": role_revocations},
-                preview=True,
-            )
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to bulk revoke roles on resource {resource_rid}: {e}"
-            )
-
-    def get_available_roles(self, resource_rid: str) -> List[Dict[str, Any]]:
-        """
-        Get all available roles for a resource type.
-
-        Args:
-            resource_rid: Resource Identifier
-
-        Returns:
-            List of available role information dictionaries
-        """
-        try:
-            roles = []
-            for role in self.service.ResourceRole.get_available_roles(
-                resource_rid, preview=True
-            ):
-                roles.append(self._format_role_info(role))
-            return roles
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to get available roles for resource {resource_rid}: {e}"
-            )
-
-    def _format_role_grant(self, role_grant: Any) -> Dict[str, Any]:
+    def _format_role_grant(self, role_grant: Any, resource_rid: str) -> Dict[str, Any]:
         """
         Format role grant information for consistent output.
 
@@ -270,36 +142,12 @@ class ResourceRoleService(BaseService):
         Returns:
             Formatted role grant information dictionary
         """
+        principal = role_grant.resource_role_principal
         return {
-            "resource_rid": getattr(role_grant, "resource_rid", None),
-            "principal_id": getattr(role_grant, "principal_id", None),
-            "principal_type": getattr(role_grant, "principal_type", None),
-            "role_name": getattr(role_grant, "role_name", None),
-            "granted_by": getattr(role_grant, "granted_by", None),
-            "granted_time": self._format_timestamp(
-                getattr(role_grant, "granted_time", None)
-            ),
-            "expires_at": self._format_timestamp(
-                getattr(role_grant, "expires_at", None)
-            ),
-        }
-
-    def _format_role_info(self, role: Any) -> Dict[str, Any]:
-        """
-        Format role information for consistent output.
-
-        Args:
-            role: Role object from Foundry SDK
-
-        Returns:
-            Formatted role information dictionary
-        """
-        return {
-            "name": getattr(role, "name", None),
-            "display_name": getattr(role, "display_name", None),
-            "description": getattr(role, "description", None),
-            "permissions": getattr(role, "permissions", []),
-            "is_owner_like": getattr(role, "is_owner_like", False),
+            "resource_rid": resource_rid,
+            "principal_id": getattr(principal, "principal_id", None),
+            "principal_type": getattr(principal, "principal_type", "Everyone"),
+            "role_name": role_grant.role_id,
         }
 
     def _format_timestamp(self, timestamp: Any) -> Optional[str]:

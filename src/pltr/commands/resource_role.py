@@ -211,146 +211,6 @@ def list_resource_roles(
         raise typer.Exit(1)
 
 
-@app.command("get-principal-roles")
-def get_principal_roles(
-    principal_id: str = typer.Option(
-        ..., "--principal-id", "-p", help="Principal (user/group) identifier"
-    ),
-    principal_type: str = typer.Option(
-        ...,
-        "--principal-type",
-        "-t",
-        help="Principal type (User or Group)",
-    ),
-    resource_rid: Optional[str] = typer.Option(
-        None,
-        "--resource-rid",
-        "-r",
-        help="Filter by resource RID",
-        autocompletion=complete_rid,
-    ),
-    profile: Optional[str] = typer.Option(
-        None, "--profile", help="Profile name", autocompletion=complete_profile
-    ),
-    format: str = typer.Option(
-        "table",
-        "--format",
-        "-f",
-        help="Output format (table, json, csv)",
-        autocompletion=complete_output_format,
-    ),
-    output: Optional[str] = typer.Option(
-        None, "--output", "-o", help="Output file path"
-    ),
-    page_size: Optional[int] = typer.Option(
-        None, "--page-size", help="Number of items per page"
-    ),
-):
-    """Get all roles granted to a principal, optionally filtered by resource."""
-    try:
-        service = ResourceRoleService(profile=profile)
-
-        filter_desc = f" on resource {resource_rid}" if resource_rid else ""
-        with SpinnerProgressTracker().track_spinner(
-            f"Getting roles for {principal_type} '{principal_id}'{filter_desc}..."
-        ):
-            role_grants = service.get_principal_roles(
-                principal_id=principal_id,
-                principal_type=principal_type.title(),
-                resource_rid=resource_rid,
-                page_size=page_size,
-            )
-
-        if not role_grants:
-            formatter.print_info(
-                f"No roles found for {principal_type} '{principal_id}'."
-            )
-            return
-
-        # Format output
-        if format == "json":
-            if output:
-                formatter.save_to_file(role_grants, output, "json")
-            else:
-                formatter.format_list(role_grants, format=format)
-        elif format == "csv":
-            if output:
-                formatter.save_to_file(role_grants, output, "csv")
-            else:
-                formatter.format_list(role_grants, format=format)
-        else:
-            _format_role_grants_table(role_grants)
-
-        if output:
-            formatter.print_success(f"Role grants saved to {output}")
-
-    except (ProfileNotFoundError, MissingCredentialsError) as e:
-        formatter.print_error(f"Authentication error: {e}")
-        raise typer.Exit(1)
-    except Exception as e:
-        formatter.print_error(f"Failed to get principal roles: {e}")
-        raise typer.Exit(1)
-
-
-@app.command("get-available-roles")
-def get_available_roles(
-    resource_rid: str = typer.Argument(
-        ..., help="Resource Identifier", autocompletion=complete_rid
-    ),
-    profile: Optional[str] = typer.Option(
-        None, "--profile", help="Profile name", autocompletion=complete_profile
-    ),
-    format: str = typer.Option(
-        "table",
-        "--format",
-        "-f",
-        help="Output format (table, json, csv)",
-        autocompletion=complete_output_format,
-    ),
-    output: Optional[str] = typer.Option(
-        None, "--output", "-o", help="Output file path"
-    ),
-):
-    """Get all available roles for a resource type."""
-    try:
-        service = ResourceRoleService(profile=profile)
-
-        with SpinnerProgressTracker().track_spinner(
-            f"Getting available roles for {resource_rid}..."
-        ):
-            roles = service.get_available_roles(resource_rid)
-
-        if not roles:
-            formatter.print_info(
-                f"No available roles found for resource {resource_rid}."
-            )
-            return
-
-        # Format output
-        if format == "json":
-            if output:
-                formatter.save_to_file(roles, output, "json")
-            else:
-                formatter.format_list(roles, format=format)
-        elif format == "csv":
-            if output:
-                formatter.save_to_file(roles, output, "csv")
-            else:
-                formatter.format_list(roles, format=format)
-        else:
-            _format_available_roles_table(roles)
-
-        if output:
-            formatter.print_success(f"Available roles saved to {output}")
-
-    except (ProfileNotFoundError, MissingCredentialsError) as e:
-        formatter.print_error(f"Authentication error: {e}")
-        raise typer.Exit(1)
-    except Exception as e:
-        formatter.print_error(f"Failed to get available roles: {e}")
-        raise typer.Exit(1)
-
-
 def _format_role_grant_table(role_grant: dict):
     """Format role grant information as a table."""
     table = Table(
@@ -392,26 +252,6 @@ def _format_role_grants_table(role_grants: List[dict]):
     console.print(f"\nTotal: {len(role_grants)} role grants")
 
 
-def _format_available_roles_table(roles: List[dict]):
-    """Format available roles as a table."""
-    table = Table(title="Available Roles", show_header=True, header_style="bold cyan")
-    table.add_column("Name")
-    table.add_column("Display Name")
-    table.add_column("Description")
-    table.add_column("Owner-like")
-
-    for role in roles:
-        table.add_row(
-            role.get("name", "N/A"),
-            role.get("display_name", "N/A"),
-            role.get("description", "N/A"),
-            "Yes" if role.get("is_owner_like", False) else "No",
-        )
-
-    console.print(table)
-    console.print(f"\nTotal: {len(roles)} available roles")
-
-
 @app.callback()
 def main():
     """
@@ -423,11 +263,13 @@ def main():
     Examples:
         # Grant a role to a user
         pltr resource-role grant ri.compass.main.dataset.xyz123 \\
-            --principal-id user123 --principal-type User --role viewer
+            --principal-id 12345678-1234-1234-1234-123456789abc \\
+            --principal-type User --role ROLE_ID
 
         # Grant a role to a group
         pltr resource-role grant ri.compass.main.project.abc456 \\
-            --principal-id group789 --principal-type Group --role editor
+            --principal-id 87654321-4321-4321-4321-cba987654321 \\
+            --principal-type Group --role ROLE_ID
 
         # List all roles on a resource
         pltr resource-role list ri.compass.main.dataset.xyz123
@@ -435,20 +277,9 @@ def main():
         # List only user roles on a resource
         pltr resource-role list ri.compass.main.dataset.xyz123 --principal-type User
 
-        # Get all roles for a specific user
-        pltr resource-role get-principal-roles \\
-            --principal-id user123 --principal-type User
-
-        # Get roles for a user on a specific resource
-        pltr resource-role get-principal-roles \\
-            --principal-id user123 --principal-type User \\
-            --resource-rid ri.compass.main.dataset.xyz123
-
-        # See what roles are available for a resource
-        pltr resource-role get-available-roles ri.compass.main.dataset.xyz123
-
         # Revoke a role from a user
         pltr resource-role revoke ri.compass.main.dataset.xyz123 \\
-            --principal-id user123 --principal-type User --role viewer
+            --principal-id 12345678-1234-1234-1234-123456789abc \\
+            --principal-type User --role ROLE_ID
     """
     pass

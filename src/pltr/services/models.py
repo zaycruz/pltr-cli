@@ -121,7 +121,7 @@ class ModelsService(BaseService):
             ... )
         """
         try:
-            version = self.service.ModelVersion.get(
+            version = self.service.Model.Version.get(
                 model_rid=model_rid,
                 model_version_rid=model_version_rid,
                 preview=preview,
@@ -166,13 +166,18 @@ class ModelsService(BaseService):
             >>> next_token = result.get('nextPageToken')
         """
         try:
-            response = self.service.ModelVersion.list(
+            response = self.service.Model.Version.list(
                 model_rid=model_rid,
                 page_size=page_size,
                 page_token=page_token,
                 preview=preview,
             )
-            return self._serialize_response(response)
+            return {
+                "data": [
+                    self._serialize_response(version) for version in response.data
+                ],
+                "nextPageToken": response.next_page_token,
+            }
         except Exception as e:
             raise RuntimeError(
                 f"Failed to list model versions for model '{model_rid}': {e}"

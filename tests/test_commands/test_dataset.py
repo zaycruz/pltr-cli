@@ -442,3 +442,46 @@ def test_schedule_list_passes_public_dictionary_contract_to_formatter(
         "ri.foundry.main.dataset.input"
     )
     format_schedules.assert_called_once_with(schedules, "table", None)
+
+
+def test_list_transactions_uses_dataset_wide_service_contract(
+    mock_dataset_service,
+):
+    transactions = [
+        {
+            "transaction_rid": "ri.foundry.main.transaction.one",
+            "status": "COMMITTED",
+        }
+    ]
+    mock_dataset_service.get_transactions.return_value = transactions
+
+    with patch(
+        "pltr.commands.dataset.formatter.format_transactions"
+    ) as format_transactions:
+        result = runner.invoke(
+            app,
+            ["transactions", "list", "ri.foundry.main.dataset.test"],
+        )
+
+    assert result.exit_code == 0
+    mock_dataset_service.get_transactions.assert_called_once_with(
+        "ri.foundry.main.dataset.test"
+    )
+    format_transactions.assert_called_once_with(transactions, "table", None)
+
+
+def test_list_transactions_rejects_removed_branch_option(mock_dataset_service):
+    result = runner.invoke(
+        app,
+        [
+            "transactions",
+            "list",
+            "ri.foundry.main.dataset.test",
+            "--branch",
+            "development",
+        ],
+    )
+
+    assert result.exit_code == 2
+    assert "No such option: --branch" in result.stderr
+    mock_dataset_service.get_transactions.assert_not_called()

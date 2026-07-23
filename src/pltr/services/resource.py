@@ -129,25 +129,6 @@ class ResourceService(BaseService):
             detail = self._format_error_detail(e)
             raise RuntimeError(f"Failed to get resources batch: {detail}")
 
-    def get_resource_metadata(self, resource_rid: str) -> Dict[str, Any]:
-        """
-        Get metadata for a specific resource.
-
-        Args:
-            resource_rid: Resource Identifier
-
-        Returns:
-            Resource metadata dictionary
-        """
-        try:
-            metadata = self.service.Resource.get_metadata(resource_rid, preview=True)
-            return self._format_metadata(metadata)
-        except Exception as e:
-            detail = self._format_error_detail(e)
-            raise RuntimeError(
-                f"Failed to get metadata for resource {resource_rid}: {detail}"
-            )
-
     def search_resources(
         self,
         query: str,
@@ -477,23 +458,6 @@ class ResourceService(BaseService):
         """
         resource_type = str(getattr(resource, "type", "") or "").lower()
         return resource_type in {"folder", "project", "space", "compass_folder"}
-
-    def _format_metadata(self, metadata: Any) -> Dict[str, Any]:
-        """
-        Format metadata for consistent output.
-
-        Args:
-            metadata: Metadata object from Foundry SDK
-
-        Returns:
-            Formatted metadata dictionary
-        """
-        if hasattr(metadata, "__dict__"):
-            return dict(metadata.__dict__)
-        elif isinstance(metadata, dict):
-            return metadata
-        else:
-            return {"raw": str(metadata)}
 
     def _format_timestamp(self, timestamp: Any) -> Optional[str]:
         """

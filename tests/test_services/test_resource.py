@@ -211,20 +211,6 @@ class TestResourceService:
         with pytest.raises(ValueError, match="Maximum batch size is 1000 resources"):
             resource_service.get_resources_batch(rids)
 
-    def test_get_resource_metadata(self, resource_service, mock_client):
-        """Test getting resource metadata."""
-        mock_metadata = {"key1": "value1", "key2": "value2"}
-
-        mock_client.filesystem.Resource.get_metadata.return_value = mock_metadata
-        resource_service._client = mock_client
-
-        result = resource_service.get_resource_metadata("ri.compass.main.dataset.123")
-
-        mock_client.filesystem.Resource.get_metadata.assert_called_once_with(
-            "ri.compass.main.dataset.123", preview=True
-        )
-        assert result == mock_metadata
-
     def test_search_resources(self, resource_service, mock_client):
         """Test searching resources."""
         folder_resource = Mock()
@@ -421,31 +407,6 @@ class TestResourceService:
 
         assert result["modified_by"] == "user456"
         assert result["modified_time"] == "2024-01-02T00:00:00Z"
-
-    def test_format_metadata_dict(self, resource_service):
-        """Test formatting metadata as dict."""
-        metadata = {"key1": "value1", "key2": "value2"}
-
-        result = resource_service._format_metadata(metadata)
-
-        assert result == metadata
-
-    def test_format_metadata_object(self, resource_service):
-        """Test formatting metadata object with __dict__."""
-        metadata = Mock()
-        metadata.__dict__ = {"key1": "value1", "key2": "value2"}
-
-        result = resource_service._format_metadata(metadata)
-
-        assert result == {"key1": "value1", "key2": "value2"}
-
-    def test_format_metadata_other(self, resource_service):
-        """Test formatting other metadata types."""
-        metadata = "some string"
-
-        result = resource_service._format_metadata(metadata)
-
-        assert result == {"raw": "some string"}
 
     # ==================== Trash Operations Tests ====================
 

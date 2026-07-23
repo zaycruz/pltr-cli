@@ -187,21 +187,6 @@ class ProjectService(BaseService):
         except Exception as e:
             raise RuntimeError(f"Failed to list projects: {e}")
 
-    def delete_project(self, project_rid: str) -> None:
-        """
-        Delete a project.
-
-        Args:
-            project_rid: Project Resource Identifier
-
-        Raises:
-            RuntimeError: If deletion fails
-        """
-        try:
-            self.service.Project.delete(project_rid, preview=True)
-        except Exception as e:
-            raise RuntimeError(f"Failed to delete project {project_rid}: {e}")
-
     def update_project(
         self,
         project_rid: str,

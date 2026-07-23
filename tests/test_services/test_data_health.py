@@ -14,7 +14,7 @@ class TestDataHealthService:
         client = Mock()
         client.data_health = Mock()
         client.data_health.Check = Mock()
-        client.data_health.CheckReport = Mock()
+        client.data_health.Check.CheckReport = Mock()
         return client
 
     @pytest.fixture
@@ -225,6 +225,7 @@ class TestDataHealthService:
     def test_get_check_report(self, service, mock_client):
         """Test getting check report information."""
         # Setup
+        check_rid = "ri.data-health.main.check.abc123"
         check_report_rid = "ri.data-health.main.check-report.abc123"
         mock_response = Mock()
         mock_response.dict.return_value = {
@@ -233,13 +234,16 @@ class TestDataHealthService:
             "result": {"status": "PASSED", "message": "Check passed"},
             "createdTime": "2024-01-15T10:30:00Z",
         }
-        mock_client.data_health.CheckReport.get.return_value = mock_response
+        mock_client.data_health.Check.CheckReport.get.return_value = mock_response
 
         # Execute
-        result = service.get_check_report(check_report_rid=check_report_rid)
+        result = service.get_check_report(
+            check_rid=check_rid, check_report_rid=check_report_rid
+        )
 
         # Assert
-        mock_client.data_health.CheckReport.get.assert_called_once_with(
+        mock_client.data_health.Check.CheckReport.get.assert_called_once_with(
+            check_rid=check_rid,
             check_report_rid=check_report_rid,
             preview=False,
         )
@@ -249,11 +253,16 @@ class TestDataHealthService:
     def test_get_check_report_error(self, service, mock_client):
         """Test error handling in get_check_report."""
         # Setup
+        check_rid = "ri.data-health.main.check.abc123"
         check_report_rid = "ri.data-health.main.check-report.notfound"
-        mock_client.data_health.CheckReport.get.side_effect = Exception("Not found")
+        mock_client.data_health.Check.CheckReport.get.side_effect = Exception(
+            "Not found"
+        )
 
         # Execute & Assert
         with pytest.raises(
             RuntimeError, match=f"Failed to get check report '{check_report_rid}'"
         ):
-            service.get_check_report(check_report_rid=check_report_rid)
+            service.get_check_report(
+                check_rid=check_rid, check_report_rid=check_report_rid
+            )

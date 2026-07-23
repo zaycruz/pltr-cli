@@ -318,6 +318,7 @@ class TestDataHealthCommands:
     def test_report_get_success(self, runner, mock_service):
         """Test successful report retrieval."""
         # Setup
+        check_rid = "ri.data-health.main.check.abc123"
         report_rid = "ri.data-health.main.check-report.abc123"
         response = {
             "rid": report_rid,
@@ -334,6 +335,7 @@ class TestDataHealthCommands:
                 "data-health",
                 "report",
                 "get",
+                check_rid,
                 report_rid,
                 "--format",
                 "json",
@@ -343,6 +345,7 @@ class TestDataHealthCommands:
         # Assert
         assert result.exit_code == 0
         mock_service.get_check_report.assert_called_once_with(
+            check_rid=check_rid,
             check_report_rid=report_rid,
             preview=False,
         )
@@ -351,6 +354,7 @@ class TestDataHealthCommands:
     def test_report_get_failed_status(self, runner, mock_service):
         """Test report retrieval with failed status."""
         # Setup
+        check_rid = "ri.data-health.main.check.abc123"
         report_rid = "ri.data-health.main.check-report.abc123"
         response = {
             "rid": report_rid,
@@ -367,6 +371,7 @@ class TestDataHealthCommands:
                 "data-health",
                 "report",
                 "get",
+                check_rid,
                 report_rid,
             ],
         )
@@ -387,6 +392,7 @@ class TestDataHealthCommands:
                 "data-health",
                 "report",
                 "get",
+                "ri.data-health.main.check.abc123",
                 "ri.data-health.main.check-report.notfound",
             ],
         )

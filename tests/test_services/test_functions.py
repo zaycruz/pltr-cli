@@ -237,16 +237,23 @@ class TestFunctionsService:
         # Setup
         query_rid = "ri.functions.main.query.abc123"
         parameters = {"limit": 10}
+        mock_query = Mock(api_name="employeeSearch")
         mock_response = Mock()
         mock_response.dict.return_value = {"result": [{"id": 1}]}
-        mock_client.functions.Query.execute_by_rid.return_value = mock_response
+        mock_client.functions.Query.get_by_rid.return_value = mock_query
+        mock_client.functions.Query.execute.return_value = mock_response
 
         # Execute
         service.execute_query_by_rid(query_rid, parameters=parameters)
 
         # Assert
-        mock_client.functions.Query.execute_by_rid.assert_called_once_with(
-            query_rid,
+        mock_client.functions.Query.get_by_rid.assert_called_once_with(
+            rid=query_rid,
+            preview=False,
+            version=None,
+        )
+        mock_client.functions.Query.execute.assert_called_once_with(
+            "employeeSearch",
             parameters=parameters,
             preview=False,
             version=None,
@@ -256,7 +263,7 @@ class TestFunctionsService:
         """Test error handling in execute_query_by_rid."""
         # Setup
         query_rid = "ri.functions.main.query.invalid"
-        mock_client.functions.Query.execute_by_rid.side_effect = Exception(
+        mock_client.functions.Query.get_by_rid.side_effect = Exception(
             "Query not found"
         )
 

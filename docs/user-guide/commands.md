@@ -366,27 +366,23 @@ pltr dataset files get ri.foundry.main.dataset.abc123 "/analysis/report.pdf" "./
 ### Transaction Operations
 
 #### `pltr dataset transactions list [OPTIONS] DATASET_RID`
-List transactions for a dataset branch.
+List the dataset-wide transaction history.
 
 **Arguments:**
 - `DATASET_RID` (required): Dataset Resource Identifier
 
 **Options:**
-- `--branch` TEXT: Dataset branch [default: master]
 - `--profile`, `-p` TEXT: Profile name
 - `--format`, `-f` TEXT: Output format (table, json, csv) [default: table]
 - `--output`, `-o` TEXT: Output file path
 
 **Examples:**
 ```bash
-# List transactions for master branch
 pltr dataset transactions list ri.foundry.main.dataset.abc123
-
-# List transactions for specific branch
-pltr dataset transactions list ri.foundry.main.dataset.abc123 --branch development
 ```
 
-**Note:** Transaction operations may not be available in all foundry-platform-python SDK versions. If unavailable, a warning message will be displayed.
+**Note:** Transaction listing is dataset-wide because the SDK endpoint does not
+expose a branch filter.
 
 ### View Operations
 
@@ -1251,103 +1247,33 @@ Get detailed information about a specific connection.
 pltr connectivity connection get ri.conn.main.connection.12345
 ```
 
-### Data Import Management
-
-#### `pltr connectivity import file [OPTIONS] CONNECTION_RID SOURCE_PATH TARGET_DATASET_RID`
-Create and optionally execute a file import via connection.
-
-**Arguments:**
-- `CONNECTION_RID` (required): Connection Resource Identifier
-- `SOURCE_PATH` (required): Source file path in the connection
-- `TARGET_DATASET_RID` (required): Target dataset RID
-
-**Options:**
-- `--profile`, `-p` TEXT: Profile name
-- `--config`, `-c` TEXT: Import configuration in JSON format
-- `--execute`: Execute the import immediately after creation
-- `--format`, `-f` TEXT: Output format (table, json, csv) [default: table]
-- `--output`, `-o` TEXT: Output file path
-
-**Examples:**
-```bash
-# Create a file import
-pltr connectivity import file ri.conn.main.connection.123 "/data/sales.csv" ri.foundry.main.dataset.456
-
-# Create and execute with custom configuration
-pltr connectivity import file ri.conn.main.connection.123 "/data/sales.csv" ri.foundry.main.dataset.456 \
-  --config '{"format": "CSV", "delimiter": ",", "header": true}' \
-  --execute
-
-# Import with custom profile
-pltr connectivity import file ri.conn.main.connection.123 "/data/sales.csv" ri.foundry.main.dataset.456 \
-  --profile production --execute
-```
-
-#### `pltr connectivity import table [OPTIONS] CONNECTION_RID SOURCE_TABLE TARGET_DATASET_RID`
-Create and optionally execute a table import via connection.
-
-**Arguments:**
-- `CONNECTION_RID` (required): Connection Resource Identifier
-- `SOURCE_TABLE` (required): Source table name in the connection
-- `TARGET_DATASET_RID` (required): Target dataset RID
-
-**Options:**
-- `--profile`, `-p` TEXT: Profile name
-- `--config`, `-c` TEXT: Import configuration in JSON format
-- `--execute`: Execute the import immediately after creation
-- `--format`, `-f` TEXT: Output format (table, json, csv) [default: table]
-- `--output`, `-o` TEXT: Output file path
-
-**Examples:**
-```bash
-# Create a table import
-pltr connectivity import table ri.conn.main.connection.123 "sales_data" ri.foundry.main.dataset.456
-
-# Create and execute with incremental sync
-pltr connectivity import table ri.conn.main.connection.123 "sales_data" ri.foundry.main.dataset.456 \
-  --config '{"sync_mode": "incremental", "primary_key": "id"}' \
-  --execute
-
-# Import with JDBC connection
-pltr connectivity import table ri.conn.main.connection.123 "public.customer_data" ri.foundry.main.dataset.789 \
-  --execute --format json
-```
-
 ### Import Listing and Management
 
 #### `pltr connectivity import list-file [OPTIONS]`
-List file imports, optionally filtered by connection.
+List file imports for a connection.
 
 **Options:**
-- `--connection`, `-c` TEXT: Filter by connection RID
+- `--connection`, `-c` TEXT (required): Connection RID
 - `--profile`, `-p` TEXT: Profile name
 - `--format`, `-f` TEXT: Output format (table, json, csv) [default: table]
 - `--output`, `-o` TEXT: Output file path
 
 **Examples:**
 ```bash
-# List all file imports
-pltr connectivity import list-file
-
-# List file imports for specific connection
 pltr connectivity import list-file --connection ri.conn.main.connection.123
 ```
 
 #### `pltr connectivity import list-table [OPTIONS]`
-List table imports, optionally filtered by connection.
+List table imports for a connection.
 
 **Options:**
-- `--connection`, `-c` TEXT: Filter by connection RID
+- `--connection`, `-c` TEXT (required): Connection RID
 - `--profile`, `-p` TEXT: Profile name
 - `--format`, `-f` TEXT: Output format (table, json, csv) [default: table]
 - `--output`, `-o` TEXT: Output file path
 
 **Examples:**
 ```bash
-# List all table imports
-pltr connectivity import list-table
-
-# List table imports for specific connection
 pltr connectivity import list-table --connection ri.conn.main.connection.123
 ```
 
@@ -1358,13 +1284,15 @@ Get detailed information about a specific file import.
 - `IMPORT_RID` (required): File import Resource Identifier
 
 **Options:**
+- `--connection`, `-c` TEXT (required): Connection RID
 - `--profile`, `-p` TEXT: Profile name
 - `--format`, `-f` TEXT: Output format (table, json, csv) [default: table]
 - `--output`, `-o` TEXT: Output file path
 
 **Example:**
 ```bash
-pltr connectivity import get-file ri.import.main.file.12345
+pltr connectivity import get-file ri.import.main.file.12345 \
+  --connection ri.conn.main.connection.123
 ```
 
 #### `pltr connectivity import get-table [OPTIONS] IMPORT_RID`
@@ -1374,44 +1302,21 @@ Get detailed information about a specific table import.
 - `IMPORT_RID` (required): Table import Resource Identifier
 
 **Options:**
+- `--connection`, `-c` TEXT (required): Connection RID
 - `--profile`, `-p` TEXT: Profile name
 - `--format`, `-f` TEXT: Output format (table, json, csv) [default: table]
 - `--output`, `-o` TEXT: Output file path
 
 **Example:**
 ```bash
-pltr connectivity import get-table ri.import.main.table.12345
-```
-
-### Common Use Cases
-
-#### Setting up a Daily Data Import
-```bash
-# 1. List available connections
-pltr connectivity connection list
-
-# 2. Create a table import with configuration
-pltr connectivity import table ri.conn.main.connection.123 "daily_sales" ri.foundry.main.dataset.456 \
-  --config '{"sync_mode": "incremental", "primary_key": "transaction_id", "updated_at_column": "last_modified"}'
-
-# 3. Execute the import
-pltr connectivity import table ri.conn.main.connection.123 "daily_sales" ri.foundry.main.dataset.456 --execute
-```
-
-#### Bulk File Import from S3
-```bash
-# Import multiple files with custom S3 configuration
-pltr connectivity import file ri.conn.main.s3.123 "/data/2024/sales/*.csv" ri.foundry.main.dataset.456 \
-  --config '{"format": "CSV", "delimiter": ",", "compression": "gzip", "multiline": true}' \
-  --execute --format json --output import_results.json
+pltr connectivity import get-table ri.import.main.table.12345 \
+  --connection ri.conn.main.connection.123
 ```
 
 **All connectivity commands support:**
 - Multiple output formats (table, JSON, CSV)
 - File output (`--output filename`)
 - Profile selection (`--profile production`)
-- Import configuration via JSON (`--config '{"key": "value"}'`)
-- Immediate execution (`--execute` for import commands)
 
 ---
 
@@ -1765,26 +1670,9 @@ pltr project update ri.compass.main.project.ghi789 \
   --description "Updated project description"
 ```
 
-### `pltr project delete [OPTIONS] PROJECT_RID`
-Delete a project.
-
-**Arguments:**
-- `PROJECT_RID` (required): Project Resource Identifier
-
-**Options:**
-- `--profile`, `-p` TEXT: Profile name
-- `--yes`, `-y`: Skip confirmation prompt
-
-**Example:**
-```bash
-pltr project delete ri.compass.main.project.ghi789 --yes
-```
-
----
-
 ## 📄 Resource Commands
 
-Generic resource operations for managing any Foundry resource, including metadata and search capabilities.
+Generic resource operations for managing and searching Foundry resources.
 
 ### `pltr resource get [OPTIONS] RESOURCE_RID`
 Get information about any Foundry resource.
@@ -1853,55 +1741,46 @@ pltr resource search "sales data"
 pltr resource search "analytics" --resource-type dataset --folder-rid ri.compass.main.folder.abc123
 ```
 
-### Resource Metadata Operations
-
-#### `pltr resource metadata get [OPTIONS] RESOURCE_RID`
-Get metadata for a resource.
-
-**Arguments:**
-- `RESOURCE_RID` (required): Resource Identifier
-
-**Example:**
-```bash
-pltr resource metadata get ri.foundry.main.dataset.abc123
-```
-
----
-
 ## 🔐 Resource Role Commands
 
 Manage resource-based permissions, including granting and revoking roles on specific resources.
 
-### `pltr resource-role grant [OPTIONS] RESOURCE_RID PRINCIPAL_ID PRINCIPAL_TYPE ROLE_NAME`
+### `pltr resource-role grant [OPTIONS] RESOURCE_RID`
 Grant a role to a user or group on a resource.
 
 **Arguments:**
 - `RESOURCE_RID` (required): Resource Identifier
-- `PRINCIPAL_ID` (required): User ID or Group ID
-- `PRINCIPAL_TYPE` (required): "User" or "Group"
-- `ROLE_NAME` (required): Role name to grant
+
+**Options:**
+- `--principal-id` TEXT (required): User or group UUID
+- `--principal-type` TEXT (required): "User" or "Group"
+- `--role` TEXT (required): Foundry role ID
 
 **Examples:**
 ```bash
-# Grant viewer role to user
-pltr resource-role grant ri.foundry.main.dataset.abc123 john.doe User viewer
-
-# Grant editor role to group
-pltr resource-role grant ri.foundry.main.dataset.abc123 data-team Group editor
+pltr resource-role grant ri.foundry.main.dataset.abc123 \
+  --principal-id 12345678-1234-1234-1234-123456789abc \
+  --principal-type User \
+  --role ROLE_ID
 ```
 
-### `pltr resource-role revoke [OPTIONS] RESOURCE_RID PRINCIPAL_ID PRINCIPAL_TYPE ROLE_NAME`
+### `pltr resource-role revoke [OPTIONS] RESOURCE_RID`
 Revoke a role from a user or group on a resource.
 
 **Arguments:**
 - `RESOURCE_RID` (required): Resource Identifier
-- `PRINCIPAL_ID` (required): User ID or Group ID
-- `PRINCIPAL_TYPE` (required): "User" or "Group"
-- `ROLE_NAME` (required): Role name to revoke
+
+**Options:**
+- `--principal-id` TEXT (required): User or group UUID
+- `--principal-type` TEXT (required): "User" or "Group"
+- `--role` TEXT (required): Foundry role ID
 
 **Example:**
 ```bash
-pltr resource-role revoke ri.foundry.main.dataset.abc123 john.doe User viewer
+pltr resource-role revoke ri.foundry.main.dataset.abc123 \
+  --principal-id 12345678-1234-1234-1234-123456789abc \
+  --principal-type User \
+  --role ROLE_ID
 ```
 
 ### `pltr resource-role list [OPTIONS] RESOURCE_RID`
@@ -1925,74 +1804,6 @@ pltr resource-role list ri.foundry.main.dataset.abc123
 
 # Filter by users only
 pltr resource-role list ri.foundry.main.dataset.abc123 --principal-type User
-```
-
-### `pltr resource-role get-principal-roles [OPTIONS] PRINCIPAL_ID PRINCIPAL_TYPE`
-Get all resource roles for a specific user or group.
-
-**Arguments:**
-- `PRINCIPAL_ID` (required): User ID or Group ID
-- `PRINCIPAL_TYPE` (required): "User" or "Group"
-
-**Options:**
-- `--resource-rid` TEXT: Filter by specific resource RID
-- `--page-size` INTEGER: Number of results per page
-- `--page-token` TEXT: Pagination token
-- `--profile`, `-p` TEXT: Profile name
-- `--format`, `-f` TEXT: Output format (table, json, csv) [default: table]
-- `--output`, `-o` TEXT: Output file path
-
-**Example:**
-```bash
-# Get all roles for user
-pltr resource-role get-principal-roles john.doe User
-
-# Filter by specific resource
-pltr resource-role get-principal-roles john.doe User --resource-rid ri.foundry.main.dataset.abc123
-```
-
-### Bulk Operations
-
-#### `pltr resource-role bulk-grant [OPTIONS] RESOURCE_RID ROLE_GRANTS`
-Grant multiple roles in a single operation.
-
-**Arguments:**
-- `RESOURCE_RID` (required): Resource Identifier
-- `ROLE_GRANTS` (required): JSON array of role grant objects
-
-**Example:**
-```bash
-pltr resource-role bulk-grant ri.foundry.main.dataset.abc123 '[
-  {"principal_id": "john.doe", "principal_type": "User", "role_name": "viewer"},
-  {"principal_id": "jane.smith", "principal_type": "User", "role_name": "editor"},
-  {"principal_id": "data-team", "principal_type": "Group", "role_name": "owner"}
-]'
-```
-
-#### `pltr resource-role bulk-revoke [OPTIONS] RESOURCE_RID ROLE_REVOCATIONS`
-Revoke multiple roles in a single operation.
-
-**Arguments:**
-- `RESOURCE_RID` (required): Resource Identifier
-- `ROLE_REVOCATIONS` (required): JSON array of role revocation objects
-
-**Example:**
-```bash
-pltr resource-role bulk-revoke ri.foundry.main.dataset.abc123 '[
-  {"principal_id": "john.doe", "principal_type": "User", "role_name": "viewer"},
-  {"principal_id": "old-group", "principal_type": "Group", "role_name": "editor"}
-]'
-```
-
-### `pltr resource-role available-roles [OPTIONS] RESOURCE_RID`
-List all available roles for a resource type.
-
-**Arguments:**
-- `RESOURCE_RID` (required): Resource Identifier
-
-**Example:**
-```bash
-pltr resource-role available-roles ri.foundry.main.dataset.abc123
 ```
 
 ---

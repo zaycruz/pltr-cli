@@ -5,7 +5,7 @@ Connectivity service wrapper for Foundry SDK.
 import logging
 import os
 from collections import deque
-from typing import Any, Optional, Dict, List
+from typing import Any, Dict, List
 
 from .base import BaseService
 
@@ -38,12 +38,12 @@ class ConnectivityService(BaseService):
     @property
     def file_imports_service(self) -> Any:
         """Get the file imports service from the client."""
-        return self.client.file_imports
+        return self.client.connectivity.Connection.FileImport
 
     @property
     def table_imports_service(self) -> Any:
         """Get the table imports service from the client."""
-        return self.client.table_imports
+        return self.client.connectivity.Connection.TableImport
 
     def list_connections(self) -> List[Dict[str, Any]]:
         """
@@ -53,13 +53,8 @@ class ConnectivityService(BaseService):
             List of connection information dictionaries
         """
         try:
-            connection_client = self.connections_service.Connection
-            if hasattr(connection_client, "list"):
-                connections = connection_client.list()
-                return [self._format_connection_info(conn) for conn in connections]
-
             logger.warning(
-                "Connection.list() is unavailable; falling back to filesystem scan. "
+                "The SDK has no Connection.list(); scanning the filesystem instead. "
                 "Set PLTR_CONNECTIONS_FALLBACK_START_FOLDER_RID to a narrower folder "
                 "if this is slow."
             )
@@ -222,178 +217,100 @@ class ConnectivityService(BaseService):
                 f"Failed to upload JDBC driver to connection {connection_rid}: {e}"
             )
 
-    def create_file_import(
-        self,
-        connection_rid: str,
-        source_path: str,
-        target_dataset_rid: str,
-        import_config: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        """
-        Create a file import via connection.
-
-        Args:
-            connection_rid: Connection Resource Identifier
-            source_path: Path to source file in the connection
-            target_dataset_rid: Target dataset RID
-            import_config: Optional import configuration
-
-        Returns:
-            File import information dictionary
-        """
-        try:
-            config = import_config or {}
-            file_import = self.file_imports_service.FileImport.create(
-                connection_rid=connection_rid,
-                source_path=source_path,
-                target_dataset_rid=target_dataset_rid,
-                **config,
-            )
-            return self._format_import_info(file_import)
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to create file import from {connection_rid}:{source_path}: {e}"
-            )
-
-    def get_file_import(self, import_rid: str) -> Dict[str, Any]:
+    def get_file_import(self, connection_rid: str, import_rid: str) -> Dict[str, Any]:
         """
         Get information about a specific file import.
 
         Args:
+            connection_rid: Connection Resource Identifier
             import_rid: File import Resource Identifier
 
         Returns:
             File import information dictionary
         """
         try:
-            file_import = self.file_imports_service.FileImport.get(import_rid)
+            file_import = self.file_imports_service.get(
+                connection_rid=connection_rid,
+                file_import_rid=import_rid,
+            )
             return self._format_import_info(file_import)
         except Exception as e:
             raise RuntimeError(f"Failed to get file import {import_rid}: {e}")
 
-    def execute_file_import(self, import_rid: str) -> Dict[str, Any]:
-        """
-        Execute a file import.
-
-        Args:
-            import_rid: File import Resource Identifier
-
-        Returns:
-            Execution result information
-        """
+    def execute_file_import(
+        self, connection_rid: str, import_rid: str
+    ) -> Dict[str, Any]:
+        """Execute a file import and return the asynchronous build RID."""
         try:
-            result = self.file_imports_service.FileImport.execute(import_rid)
-            return self._format_execution_result(result)
+            build_rid = self.file_imports_service.execute(
+                connection_rid=connection_rid,
+                file_import_rid=import_rid,
+            )
+            return {"build_rid": build_rid}
         except Exception as e:
             raise RuntimeError(f"Failed to execute file import {import_rid}: {e}")
 
-    def create_table_import(
-        self,
-        connection_rid: str,
-        source_table: str,
-        target_dataset_rid: str,
-        import_config: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
-        """
-        Create a table import via connection.
-
-        Args:
-            connection_rid: Connection Resource Identifier
-            source_table: Source table name in the connection
-            target_dataset_rid: Target dataset RID
-            import_config: Optional import configuration
-
-        Returns:
-            Table import information dictionary
-        """
-        try:
-            config = import_config or {}
-            table_import = self.table_imports_service.TableImport.create(
-                connection_rid=connection_rid,
-                source_table=source_table,
-                target_dataset_rid=target_dataset_rid,
-                **config,
-            )
-            return self._format_import_info(table_import)
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to create table import from {connection_rid}:{source_table}: {e}"
-            )
-
-    def get_table_import(self, import_rid: str) -> Dict[str, Any]:
+    def get_table_import(self, connection_rid: str, import_rid: str) -> Dict[str, Any]:
         """
         Get information about a specific table import.
 
         Args:
+            connection_rid: Connection Resource Identifier
             import_rid: Table import Resource Identifier
 
         Returns:
             Table import information dictionary
         """
         try:
-            table_import = self.table_imports_service.TableImport.get(import_rid)
+            table_import = self.table_imports_service.get(
+                connection_rid=connection_rid,
+                table_import_rid=import_rid,
+            )
             return self._format_import_info(table_import)
         except Exception as e:
             raise RuntimeError(f"Failed to get table import {import_rid}: {e}")
 
-    def execute_table_import(self, import_rid: str) -> Dict[str, Any]:
-        """
-        Execute a table import.
-
-        Args:
-            import_rid: Table import Resource Identifier
-
-        Returns:
-            Execution result information
-        """
+    def execute_table_import(
+        self, connection_rid: str, import_rid: str
+    ) -> Dict[str, Any]:
+        """Execute a table import and return the asynchronous build RID."""
         try:
-            result = self.table_imports_service.TableImport.execute(import_rid)
-            return self._format_execution_result(result)
+            build_rid = self.table_imports_service.execute(
+                connection_rid=connection_rid,
+                table_import_rid=import_rid,
+            )
+            return {"build_rid": build_rid}
         except Exception as e:
             raise RuntimeError(f"Failed to execute table import {import_rid}: {e}")
 
-    def list_file_imports(
-        self, connection_rid: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    def list_file_imports(self, connection_rid: str) -> List[Dict[str, Any]]:
         """
-        List file imports, optionally filtered by connection.
+        List file imports for a connection.
 
         Args:
-            connection_rid: Optional connection RID to filter by
+            connection_rid: Connection Resource Identifier
 
         Returns:
             List of file import information dictionaries
         """
         try:
-            if connection_rid:
-                imports = self.file_imports_service.FileImport.list(
-                    connection_rid=connection_rid
-                )
-            else:
-                imports = self.file_imports_service.FileImport.list()
+            imports = self.file_imports_service.list(connection_rid=connection_rid)
             return [self._format_import_info(imp) for imp in imports]
         except Exception as e:
             raise RuntimeError(f"Failed to list file imports: {e}")
 
-    def list_table_imports(
-        self, connection_rid: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    def list_table_imports(self, connection_rid: str) -> List[Dict[str, Any]]:
         """
-        List table imports, optionally filtered by connection.
+        List table imports for a connection.
 
         Args:
-            connection_rid: Optional connection RID to filter by
+            connection_rid: Connection Resource Identifier
 
         Returns:
             List of table import information dictionaries
         """
         try:
-            if connection_rid:
-                imports = self.table_imports_service.TableImport.list(
-                    connection_rid=connection_rid
-                )
-            else:
-                imports = self.table_imports_service.TableImport.list()
+            imports = self.table_imports_service.list(connection_rid=connection_rid)
             return [self._format_import_info(imp) for imp in imports]
         except Exception as e:
             raise RuntimeError(f"Failed to list table imports: {e}")
@@ -538,25 +455,3 @@ class ConnectivityService(BaseService):
             }
         except Exception:
             return {"raw": str(import_obj)}
-
-    def _format_execution_result(self, result: Any) -> Dict[str, Any]:
-        """
-        Format execution result for display.
-
-        Args:
-            result: Execution result object from SDK
-
-        Returns:
-            Formatted result dictionary
-        """
-        try:
-            return {
-                "execution_rid": getattr(result, "execution_rid", "N/A"),
-                "status": getattr(result, "status", "N/A"),
-                "started_time": getattr(result, "started_time", "N/A"),
-                "completed_time": getattr(result, "completed_time", ""),
-                "records_processed": getattr(result, "records_processed", 0),
-                "errors": getattr(result, "errors", []),
-            }
-        except Exception:
-            return {"raw": str(result)}

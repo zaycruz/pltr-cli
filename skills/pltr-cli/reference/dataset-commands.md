@@ -105,7 +105,7 @@ Transactions provide atomic operations with rollback capability.
 
 ```bash
 # List transactions
-pltr dataset transactions list DATASET_RID [--branch BRANCH]
+pltr dataset transactions list DATASET_RID
 
 # Start transaction
 pltr dataset transactions start DATASET_RID [--branch BRANCH]
@@ -120,19 +120,25 @@ pltr dataset transactions commit DATASET_RID TRANSACTION_RID
 pltr dataset transactions abort DATASET_RID TRANSACTION_RID
 ```
 
+Transaction listing is dataset-wide because the pinned SDK transaction endpoint
+does not expose a branch filter.
+
 ## View Operations
 
 ```bash
-# List views
+# List views (reports an explicit unsupported-capability warning with SDK 1.95.0)
 pltr dataset views list DATASET_RID
 
-# Create view
-pltr dataset views create DATASET_RID VIEW_NAME [--description TEXT]
+# Create a view backed by DATASET_RID in the same parent folder
+pltr dataset views create DATASET_RID VIEW_NAME
 
 # Examples
-pltr dataset views list ri.foundry.main.dataset.abc123
-pltr dataset views create ri.foundry.main.dataset.abc123 "analysis-view" --description "Monthly analysis"
+pltr dataset views create ri.foundry.main.dataset.abc123 "analysis-view"
 ```
+
+`foundry-platform-sdk` 1.95.0 exposes `View.create` but not `View.list`, and
+`View.create` has no description parameter. The CLI therefore fails closed when
+`--description` is supplied instead of silently discarding it.
 
 ## Copy Datasets
 

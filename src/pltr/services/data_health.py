@@ -176,6 +176,7 @@ class DataHealthService(BaseService):
 
     def get_check_report(
         self,
+        check_rid: str,
         check_report_rid: str,
         preview: bool = False,
     ) -> Dict[str, Any]:
@@ -183,6 +184,7 @@ class DataHealthService(BaseService):
         Get a data health check report.
 
         Args:
+            check_rid: Check RID (e.g., ri.data-health.main.check.xxx)
             check_report_rid: CheckReport RID (e.g., ri.data-health.main.check-report.xxx)
             preview: Enable preview mode (default: False)
 
@@ -199,11 +201,13 @@ class DataHealthService(BaseService):
         Example:
             >>> service = DataHealthService()
             >>> report = service.get_check_report(
+            ...     check_rid="ri.data-health.main.check.abc123",
             ...     check_report_rid="ri.data-health.main.check-report.abc123"
             ... )
         """
         try:
-            report = self.service.CheckReport.get(
+            report = self.service.Check.CheckReport.get(
+                check_rid=check_rid,
                 check_report_rid=check_report_rid,
                 preview=preview,
             )

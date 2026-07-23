@@ -1,6 +1,9 @@
 """Tests for Models service."""
 
+from types import SimpleNamespace
+
 import pytest
+from foundry_sdk._core import ResourceIterator
 from unittest.mock import Mock, patch
 from pltr.services.models import ModelsService
 
@@ -14,7 +17,7 @@ class TestModelsService:
         client = Mock()
         client.models = Mock()
         client.models.Model = Mock()
-        client.models.ModelVersion = Mock()
+        client.models.Model.Version = Mock()
         return client
 
     @pytest.fixture
@@ -153,7 +156,7 @@ class TestModelsService:
             "versionRid": version_rid,
             "createdTime": "2024-01-01T00:00:00Z",
         }
-        mock_client.models.ModelVersion.get.return_value = mock_response
+        mock_client.models.Model.Version.get.return_value = mock_response
 
         # Execute
         result = service.get_model_version(
@@ -161,7 +164,7 @@ class TestModelsService:
         )
 
         # Assert
-        mock_client.models.ModelVersion.get.assert_called_once_with(
+        mock_client.models.Model.Version.get.assert_called_once_with(
             model_rid=model_rid,
             model_version_rid=version_rid,
             preview=False,
@@ -176,7 +179,7 @@ class TestModelsService:
         version_rid = "v1.0.0"
         mock_response = Mock()
         mock_response.dict.return_value = {"versionRid": version_rid}
-        mock_client.models.ModelVersion.get.return_value = mock_response
+        mock_client.models.Model.Version.get.return_value = mock_response
 
         # Execute
         service.get_model_version(
@@ -186,7 +189,7 @@ class TestModelsService:
         )
 
         # Assert
-        mock_client.models.ModelVersion.get.assert_called_once_with(
+        mock_client.models.Model.Version.get.assert_called_once_with(
             model_rid=model_rid,
             model_version_rid=version_rid,
             preview=True,
@@ -195,7 +198,9 @@ class TestModelsService:
     def test_get_model_version_error(self, service, mock_client):
         """Test error handling in get_model_version."""
         # Setup
-        mock_client.models.ModelVersion.get.side_effect = Exception("Version not found")
+        mock_client.models.Model.Version.get.side_effect = Exception(
+            "Version not found"
+        )
 
         # Execute & Assert
         with pytest.raises(RuntimeError, match="Failed to get model version"):
@@ -210,21 +215,23 @@ class TestModelsService:
         """Test listing model versions."""
         # Setup
         model_rid = "ri.foundry.main.model.abc123"
-        mock_response = Mock()
-        mock_response.dict.return_value = {
-            "data": [
-                {"versionRid": "v1.0.0"},
-                {"versionRid": "v1.1.0"},
-            ],
-            "nextPageToken": None,
-        }
-        mock_client.models.ModelVersion.list.return_value = mock_response
+        fetch_page = Mock(
+            return_value=(
+                None,
+                [
+                    SimpleNamespace(version_rid="v1.0.0"),
+                    SimpleNamespace(version_rid="v1.1.0"),
+                ],
+            )
+        )
+        response = ResourceIterator(fetch_page)
+        mock_client.models.Model.Version.list.return_value = response
 
         # Execute
         result = service.list_model_versions(model_rid=model_rid)
 
         # Assert
-        mock_client.models.ModelVersion.list.assert_called_once_with(
+        mock_client.models.Model.Version.list.assert_called_once_with(
             model_rid=model_rid,
             page_size=None,
             page_token=None,
@@ -232,19 +239,32 @@ class TestModelsService:
         )
         assert len(result["data"]) == 2
         assert result["nextPageToken"] is None
+        fetch_page.assert_called_once_with(page_size=None, next_page_token=None)
 
     def test_list_model_versions_with_pagination(self, service, mock_client):
-        """Test listing model versions with pagination."""
+        """Test one page is returned without auto-fetching the next page."""
         # Setup
         model_rid = "ri.foundry.main.model.abc123"
         page_size = 50
         page_token = "token123"
-        mock_response = Mock()
-        mock_response.dict.return_value = {
-            "data": [{"versionRid": "v1.0.0"}],
-            "nextPageToken": "token456",
-        }
-        mock_client.models.ModelVersion.list.return_value = mock_response
+        fetch_page = Mock(
+            side_effect=[
+                (
+                    "token456",
+                    [SimpleNamespace(version_rid="v1.0.0")],
+                ),
+                (
+                    None,
+                    [SimpleNamespace(version_rid="v1.1.0")],
+                ),
+            ]
+        )
+        response = ResourceIterator(
+            fetch_page,
+            page_size=page_size,
+            page_token=page_token,
+        )
+        mock_client.models.Model.Version.list.return_value = response
 
         # Execute
         result = service.list_model_versions(
@@ -255,19 +275,24 @@ class TestModelsService:
         )
 
         # Assert
-        mock_client.models.ModelVersion.list.assert_called_once_with(
+        mock_client.models.Model.Version.list.assert_called_once_with(
             model_rid=model_rid,
             page_size=page_size,
             page_token=page_token,
             preview=True,
         )
         assert "data" in result
+        assert result["data"] == [{"version_rid": "v1.0.0"}]
         assert result["nextPageToken"] == "token456"
+        fetch_page.assert_called_once_with(
+            page_size=page_size,
+            next_page_token=page_token,
+        )
 
     def test_list_model_versions_error(self, service, mock_client):
         """Test error handling in list_model_versions."""
         # Setup
-        mock_client.models.ModelVersion.list.side_effect = Exception("List failed")
+        mock_client.models.Model.Version.list.side_effect = Exception("List failed")
 
         # Execute & Assert
         with pytest.raises(RuntimeError, match="Failed to list model versions"):
