@@ -1,22 +1,22 @@
-# pltr
+# pltr-cli
 
-The **agent-native** command-line interface for Palantir Foundry.
+> **A fork of [`anjor/pltr-cli`](https://github.com/anjor/pltr-cli) by [@anjor](https://github.com/anjor), who built the original CLI.** All credit for the base tool is theirs. This fork keeps upstream's name, command, and MIT license, then takes it agent-native: the `pltr-agent-v1` JSON contract, the dependency / change-impact gate, the skill bundle, and optional Langfuse tracing.
 
-`pltr` wraps the official [`foundry-platform-sdk`](https://github.com/palantir/foundry-platform-python) and adds three things a raw SDK does not give you:
+An **agent-native** fork of the command-line interface for Palantir Foundry.
+
+`pltr-cli` wraps the official [`foundry-platform-sdk`](https://github.com/palantir/foundry-platform-python) and adds three things on top of upstream:
 
 1. **A stable machine contract.** Every command can emit one JSON envelope (`pltr-agent-v1`) with `--agent`, so an autonomous caller never has to parse tables or scrape text.
 2. **A read-only dependency and change-impact gate.** Before you touch a Foundry resource, `pltr dependency` tells you what breaks — with explicit coverage gaps, provenance, and a CI exit code.
 3. **A drop-in skill bundle.** `skills/pltr-cli/` teaches any coding agent (Claude, Codex, others) how to drive the CLI safely.
 
-**Agent-native by design.** The JSON contract, the change-impact gate, and the skill bundle are not add-ons bolted onto a human tool — they are why this fork exists: to let an autonomous agent operate Foundry safely and cheaply, with no human in the loop. Human use is fully supported too — Rich tables, an interactive shell, multi-profile switching, and 100+ commands across datasets, SQL, ontology, orchestration, filesystem, and admin.
-
-> This is a fork of [`anjor/pltr-cli`](https://github.com/anjor/pltr-cli). The agent contract, the dependency system, the skill bundle, and optional Langfuse tracing are additions in this fork.
+**Why this fork exists.** The JSON contract, the change-impact gate, and the skill bundle let an autonomous agent operate Foundry safely and cheaply, with no human in the loop. Everything else — Rich tables, the interactive shell, multi-profile switching, and the 100+ commands across datasets, SQL, ontology, orchestration, filesystem, and admin — comes from upstream and still works the same way.
 
 ---
 
 ## Install
 
-Installed from git (not published to PyPI). The command is `pltr`.
+Installed from git (not published to PyPI). Upstream `anjor/pltr-cli` is on PyPI; this fork is not, so install it by URL. The command is still `pltr`.
 
 ```bash
 uv pip install "git+https://github.com/zaycruz/pltr-cli"
@@ -211,6 +211,6 @@ When extending the SDK surface, be exact about what Foundry exposes and preserve
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT, same as upstream. See [LICENSE](LICENSE).
 
-Built on the official [Palantir Foundry Platform Python SDK](https://github.com/palantir/foundry-platform-python). Forked from [`anjor/pltr-cli`](https://github.com/anjor/pltr-cli).
+Original CLI by [@anjor](https://github.com/anjor) — [`anjor/pltr-cli`](https://github.com/anjor/pltr-cli). Built on the official [Palantir Foundry Platform Python SDK](https://github.com/palantir/foundry-platform-python).
