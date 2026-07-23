@@ -1,0 +1,47 @@
+# pltr
+
+> A command-line interface for Palantir Foundry, built for agents and CI first. It wraps the official foundry-platform-sdk and adds a stable JSON agent contract (pltr-agent-v1), a read-only dependency / change-impact gate, and a drop-in skill bundle for coding agents.
+
+This fork is installed from git (not PyPI). The installed command is `pltr`.
+
+## Install
+
+```
+uv pip install "git+https://github.com/zaycruz/pltr-cli"
+```
+
+Then authenticate and verify:
+
+```
+export FOUNDRY_TOKEN="your-api-token"
+export FOUNDRY_HOST="foundry.company.com"
+pltr verify
+```
+
+## Agent usage
+
+Add `--agent` to any command to get one stable JSON envelope (schema_version `pltr-agent-v1`) with fields: `data`, `meta`, `warnings`, `errors`, `pagination`, `artifacts`. Credential-like fields are redacted; pagination cursors are preserved; prompts are disabled, so a mutation needs its explicit confirmation flag (for example `--force`).
+
+Discover the command surface first:
+
+```
+pltr --agent capabilities
+```
+
+## Change-impact gate (run before any Foundry change)
+
+Before modifying a Foundry ontology resource, action, query, dataset, or application, run a read-only assessment and retain the evidence graph:
+
+```
+pltr dependency resource <RID> --change "<what changes>" --change-type <type> --output-mode agent --graph-output ./before.json
+```
+
+For CI gating use `--output-mode ci`: exit 0 is clean, 2 needs verification, 1 is fatal. Never treat a coverage gap as "no impact".
+
+## Docs
+
+- Skill bundle (how an agent should drive pltr): https://github.com/zaycruz/pltr-cli/blob/main/skills/pltr-cli/SKILL.md
+- Repository agent rules and the mandatory change-impact gate: https://github.com/zaycruz/pltr-cli/blob/main/AGENTS.md
+- Dependency command reference: https://github.com/zaycruz/pltr-cli/blob/main/skills/pltr-cli/reference/dependency-commands.md
+- Full command reference: https://github.com/zaycruz/pltr-cli/blob/main/docs/user-guide/commands.md
+- README: https://github.com/zaycruz/pltr-cli/blob/main/README.md
