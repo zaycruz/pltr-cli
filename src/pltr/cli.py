@@ -9,7 +9,12 @@ import typer
 from typing_extensions import Annotated
 
 from pltr import __version__
-from pltr.utils.agent_output import configure_agent_settings, flush_agent_output
+from pltr.utils.agent_output import (
+    agent_mode_enabled,
+    buffer_agent_payload,
+    configure_agent_settings,
+    flush_agent_output,
+)
 from pltr.utils.tracing import command_paths_for_app, run_with_tracing
 from pltr.commands import (
     configure,
@@ -221,6 +226,9 @@ def _capture_stray_stdout():
 @app.command()
 def hello():
     """Test command to verify CLI is working."""
+    if agent_mode_enabled():
+        buffer_agent_payload({"status": "ok"}, meta={"operation": "hello"})
+        return
     typer.echo("Hello from pltr! 🚀")
     typer.echo("CLI is working correctly.")
 

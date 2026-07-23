@@ -59,11 +59,15 @@ def _walk(
 ) -> Iterator[Tuple[str, ...]]:
     """Yield the argv path of every leaf command on the app."""
     if isinstance(command, click.Group):
+        # A group that runs without a subcommand (`pltr capabilities`) is an
+        # invocable command in its own right. Walking only leaves let one
+        # escape this contract entirely.
+        if path and command.invoke_without_command:
+            yield path
         for name, sub in command.commands.items():
             yield from _walk(sub, path + (name,))
-    else:
-        if path:
-            yield path
+    elif path:
+        yield path
 
 
 def all_command_paths() -> List[Tuple[str, ...]]:
@@ -89,8 +93,14 @@ def test_agent_stdout_is_one_envelope(path: Tuple[str, ...]):
 
     stdout = result.stdout
     if not stdout.strip():
-        # Nothing written is contract-compliant: the caller reads the exit code
-        # and stderr. Emitting *several* documents is the failure this guards.
+        # Silence is only acceptable when the command never ran far enough to
+        # produce a result -- a usage error, or an abort before the callback.
+        # A command that exits 0 owes the caller an envelope; treating empty
+        # stdout as "compliant" is how three commands went silent unnoticed.
+        assert result.exit_code != 0, (
+            f"`pltr --agent {' '.join(path)}` exited 0 but wrote nothing to "
+            "stdout; an agent has no result to read"
+        )
         return
 
     try:

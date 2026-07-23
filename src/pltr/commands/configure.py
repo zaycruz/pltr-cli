@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.prompt import Prompt, Confirm
 
 from ..auth.storage import CredentialStorage
+from ..utils.agent_output import agent_mode_enabled, buffer_agent_payload
 from ..auth.base import ProfileNotFoundError
 from ..config.profiles import ProfileManager
 
@@ -98,8 +99,32 @@ def list_profiles():
     default = profile_manager.get_default()
 
     if not profiles:
+        if agent_mode_enabled():
+            buffer_agent_payload([], meta={"operation": "list_profiles"})
+            return
         console.print("[yellow]No profiles configured.[/yellow]")
         console.print("Run 'pltr configure' to set up your first profile.")
+        return
+
+    if agent_mode_enabled():
+        # An agent needs to know which stack it is pointed at before issuing a
+        # destructive call, so host and auth type are part of the contract.
+        records = []
+        for profile in profiles:
+            try:
+                creds = storage.get_profile(profile)
+                host, auth_type = creds.get("host"), creds.get("auth_type")
+            except ProfileNotFoundError:
+                host, auth_type = None, None
+            records.append(
+                {
+                    "profile": profile,
+                    "default": profile == default,
+                    "host": host,
+                    "auth_type": auth_type,
+                }
+            )
+        buffer_agent_payload(records, meta={"operation": "list_profiles"})
         return
 
     from rich.table import Table
