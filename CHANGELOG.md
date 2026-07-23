@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No changes yet._
 
+## [0.23.0] - 2026-07-23
+
+### Added
+
+- Added optional, failure-safe Langfuse tracing for CLI invocations. When Langfuse credentials are present, each invocation emits a span with sensitive environment variables and flags redacted; otherwise tracing is a no-op. Enabled via the optional `langfuse` extra.
+
+
 ## [0.22.0] - 2026-07-23
 
 ### Added
