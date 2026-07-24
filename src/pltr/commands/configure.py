@@ -11,6 +11,7 @@ from ..auth.storage import CredentialStorage
 from ..utils.agent_output import (
     AgentPolicyError,
     agent_mode_enabled,
+    buffer_agent_message,
     buffer_agent_payload,
     non_interactive_enabled,
     require_confirmation,
@@ -29,9 +30,12 @@ def _require_flag(option_name: str) -> None:
     a closed stdin. An agent gets a policy error naming the flag to pass.
     """
     if non_interactive_enabled():
-        raise AgentPolicyError(
-            f"Configuring a profile without prompts requires {option_name}."
-        )
+        detail = f"Configuring a profile without prompts requires {option_name}."
+        if agent_mode_enabled():
+            # Mirror require_confirmation: buffer first, so the refusal reaches
+            # the caller as an envelope instead of stderr text and empty stdout.
+            buffer_agent_message(detail, level="error")
+        raise AgentPolicyError(detail)
 
 
 @app.command()
@@ -88,6 +92,18 @@ def configure(
             "Foundry host URL", default="https://your-stack.palantirfoundry.com"
         )
 
+    if auth_type not in {"token", "oauth"}:
+        # Neither credential branch below matches, so without this the profile
+        # is saved with no usable credentials and reported as a success.
+        message = (
+            f"Unsupported authentication type '{auth_type}'. Choose token or oauth."
+        )
+        if agent_mode_enabled():
+            buffer_agent_message(message, level="error")
+        else:
+            console.print(f"[red]Error:[/red] {message}")
+        raise typer.Exit(2)
+
     credentials = {"auth_type": auth_type, "host": host}
 
     if auth_type == "token":
@@ -117,7 +133,16 @@ def configure(
     if len(profile_manager.list_profiles()) == 1:
         profile_manager.set_default(profile)
 
-    console.print(f"[green]✓[/green] Profile '{profile}' configured successfully")
+    if agent_mode_enabled():
+        buffer_agent_payload(
+            {"profile": profile, "auth_type": auth_type, "host": host},
+            meta={"operation": "configure_profile"},
+        )
+        buffer_agent_message(
+            f"Profile '{profile}' configured successfully", level="success"
+        )
+    else:
+        console.print(f"[green]✓[/green] Profile '{profile}' configured successfully")
 
 
 @app.command(name="list")

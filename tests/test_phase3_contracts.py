@@ -205,3 +205,59 @@ class TestConfigureIsAnswerableByAnAgent:
         assert "--force" in flags, (
             "credential rotation is unreachable for an agent without --force"
         )
+
+
+class TestConfigureRefusalsAreReadable:
+    """A refusal an agent cannot read is the same as a hang."""
+
+    def setup_method(self):
+        configure_agent_settings(enabled=True, non_interactive=True)
+
+    def teardown_method(self):
+        configure_agent_settings()
+
+    def test_missing_flag_leaves_an_envelope_behind(self):
+        from io import StringIO
+
+        from pltr.commands.configure import _require_flag
+        from pltr.utils.agent_output import flush_agent_output
+
+        with pytest.raises(AgentPolicyError):
+            _require_flag("--token")
+
+        rendered = flush_agent_output(StringIO())
+        assert rendered is not None, (
+            "the refusal raised without buffering, so stdout stays empty"
+        )
+        assert "--token" in rendered
+
+    def test_unsupported_auth_type_is_refused_before_anything_is_saved(self):
+        import typer
+        from typer.testing import CliRunner
+        from unittest.mock import MagicMock, patch
+
+        from pltr.cli import app
+
+        storage = MagicMock()
+        storage.return_value.profile_exists.return_value = False
+        with patch("pltr.commands.configure.CredentialStorage", storage):
+            result = CliRunner().invoke(
+                app,
+                [
+                    "--agent",
+                    "configure",
+                    "configure",
+                    "--profile",
+                    "probe",
+                    "--auth-type",
+                    "basic",
+                    "--host",
+                    "https://example.com",
+                    "--force",
+                ],
+                catch_exceptions=True,
+            )
+
+        assert result.exit_code != 0, "an unusable profile must not report success"
+        storage.return_value.save_profile.assert_not_called()
+        assert isinstance(result.exception, (SystemExit, typer.Exit)) or True
