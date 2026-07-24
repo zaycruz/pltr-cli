@@ -208,10 +208,15 @@ class ProjectService(BaseService):
             raise ValueError("At least one field must be provided for update")
 
         try:
-            # Fetch current project to get display_name if not provided (required for replace)
-            if not display_name:
+            # replace() overwrites every field, so any value the caller did not
+            # supply must be read back first. Back-filling only display_name
+            # silently erased the description on a name-only update.
+            if not display_name or description is None:
                 current_project = self.service.Project.get(project_rid, preview=True)
-                display_name = current_project.display_name
+                if not display_name:
+                    display_name = current_project.display_name
+                if description is None:
+                    description = getattr(current_project, "description", None)
 
             project = self.service.Project.replace(
                 project_rid=project_rid,

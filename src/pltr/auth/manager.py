@@ -2,6 +2,7 @@
 Authentication manager for getting configured Foundry clients.
 """
 
+import os
 from typing import Optional, Any
 
 from .base import AuthProvider, ProfileNotFoundError, MissingCredentialsError
@@ -37,9 +38,18 @@ class AuthManager:
         if not profile:
             profile = self.profile_manager.get_active_profile()
             if not profile:
+                # README and SKILL.md both offer environment variables as the
+                # CI/automation path. The providers read them, but nothing ever
+                # reached the providers without a keyring profile, so the
+                # documented path could not authenticate at all.
+                provider = self._provider_from_environment()
+                if provider is not None:
+                    return provider.get_client()
                 raise ProfileNotFoundError(
                     "No profile specified and no default profile configured. "
-                    "Run 'pltr configure configure' to set up authentication."
+                    "Run 'pltr configure configure' to set up authentication, "
+                    "or set FOUNDRY_HOST with FOUNDRY_TOKEN (or "
+                    "FOUNDRY_CLIENT_ID and FOUNDRY_CLIENT_SECRET)."
                 )
 
         # Get credentials for the profile
@@ -56,6 +66,27 @@ class AuthManager:
 
         # Return authenticated client
         return provider.get_client()
+
+    @staticmethod
+    def _provider_from_environment() -> Optional[AuthProvider]:
+        """Build a provider from environment credentials, or None if incomplete.
+
+        Only used when no profile was named and none is configured, so an
+        exported variable can never silently override a stored profile.
+        """
+        host = os.environ.get("FOUNDRY_HOST")
+        if not host:
+            return None
+        token = os.environ.get("FOUNDRY_TOKEN")
+        if token:
+            return TokenAuthProvider(token=token, host=host)
+        client_id = os.environ.get("FOUNDRY_CLIENT_ID")
+        client_secret = os.environ.get("FOUNDRY_CLIENT_SECRET")
+        if client_id and client_secret:
+            return OAuthClientProvider(
+                client_id=client_id, client_secret=client_secret, host=host
+            )
+        return None
 
     def _create_provider(self, credentials: dict) -> AuthProvider:
         """

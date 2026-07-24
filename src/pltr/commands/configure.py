@@ -8,12 +8,30 @@ from rich.console import Console
 from rich.prompt import Prompt, Confirm
 
 from ..auth.storage import CredentialStorage
-from ..utils.agent_output import agent_mode_enabled, buffer_agent_payload
+from ..utils.agent_output import (
+    AgentPolicyError,
+    agent_mode_enabled,
+    buffer_agent_payload,
+    non_interactive_enabled,
+    require_confirmation,
+)
 from ..auth.base import ProfileNotFoundError
 from ..config.profiles import ProfileManager
 
 app = typer.Typer()
 console = Console()
+
+
+def _require_flag(option_name: str) -> None:
+    """Refuse to prompt when the caller forbade prompts.
+
+    `configure` reads credentials through Rich prompts, which block forever on
+    a closed stdin. An agent gets a policy error naming the flag to pass.
+    """
+    if non_interactive_enabled():
+        raise AgentPolicyError(
+            f"Configuring a profile without prompts requires {option_name}."
+        )
 
 
 @app.command()
@@ -34,6 +52,9 @@ def configure(
     client_secret: Optional[str] = typer.Option(
         None, "--client-secret", help="OAuth client secret"
     ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Overwrite an existing profile without asking"
+    ),
 ):
     """Configure authentication for Palantir Foundry."""
     storage = CredentialStorage()
@@ -45,18 +66,24 @@ def configure(
 
     # Check if profile already exists
     if storage.profile_exists(profile):
-        if not Confirm.ask(f"Profile '{profile}' already exists. Overwrite?"):
+        if not require_confirmation(
+            f"Profile '{profile}' already exists. Overwrite?",
+            confirmed=force,
+            option_name="--force",
+        ):
             console.print("[yellow]Configuration cancelled.[/yellow]")
             raise typer.Exit()
 
     # Interactive mode if no auth type specified
     if not auth_type:
+        _require_flag("--auth-type")
         auth_type = Prompt.ask(
             "Authentication type", choices=["token", "oauth"], default="token"
         )
 
     # Get host URL
     if not host:
+        _require_flag("--host")
         host = Prompt.ask(
             "Foundry host URL", default="https://your-stack.palantirfoundry.com"
         )
@@ -66,14 +93,17 @@ def configure(
     if auth_type == "token":
         # Token authentication
         if not token:
+            _require_flag("--token")
             token = Prompt.ask("Bearer token", password=True)
         credentials["token"] = token
 
     elif auth_type == "oauth":
         # OAuth authentication
         if not client_id:
+            _require_flag("--client-id")
             client_id = Prompt.ask("OAuth client ID")
         if not client_secret:
+            _require_flag("--client-secret")
             client_secret = Prompt.ask("OAuth client secret", password=True)
 
         credentials["client_id"] = client_id
