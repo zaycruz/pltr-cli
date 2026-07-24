@@ -174,7 +174,7 @@ def commit_transaction(
         if not confirm:
             if not require_confirmation(
                 f"Are you sure you want to commit transaction {transaction_id}?",
-                option_name="--confirm",
+                option_name="--yes",
             ):
                 raise typer.Abort()
 
@@ -213,7 +213,7 @@ def abort_transaction(
         if not confirm:
             if not require_confirmation(
                 f"Are you sure you want to abort transaction {transaction_id}? This will delete uploaded items.",
-                option_name="--confirm",
+                option_name="--yes",
             ):
                 raise typer.Abort()
 

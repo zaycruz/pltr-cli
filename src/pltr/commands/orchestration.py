@@ -590,7 +590,7 @@ def delete_schedule(
         if not confirm:
             if not require_confirmation(
                 f"Are you sure you want to delete schedule {schedule_rid}?",
-                option_name="--confirm",
+                option_name="--yes",
             ):
                 raise typer.Abort()
 

@@ -242,13 +242,13 @@ def get_schema(
 
         # Format schema for display
         if resolve_output_format(format) in {"json", "agent"}:
-            formatter._format_json(schema, output)
+            formatter.format_dict(schema, format, output)
         else:
             formatter.print_info(f"Dataset: {dataset_rid}")
             formatter.print_info(f"Status: {schema.get('status', 'Unknown')}")
             if schema.get("schema"):
                 formatter.print_info("\nSchema:")
-                formatter._format_json(schema.get("schema"))
+                formatter.format_dict(schema.get("schema") or {}, format)
 
         if output:
             formatter.print_success(f"Schema saved to {output}")
@@ -298,7 +298,7 @@ def apply_schema(
 
         # Display result if available
         if result.get("result"):
-            formatter._format_json(result.get("result"))
+            formatter.display(result.get("result"), format)
 
     except (ProfileNotFoundError, MissingCredentialsError) as e:
         formatter.print_error(f"Authentication error: {e}")
@@ -572,7 +572,7 @@ def delete_branch(
             confirmed = require_confirmation(
                 f"Are you sure you want to delete branch '{branch_name}' from dataset {dataset_rid}? "
                 f"This action cannot be undone.",
-                option_name="--confirm",
+                option_name="--yes",
             )
             if not confirmed:
                 formatter.print_info("Branch deletion cancelled")
@@ -903,7 +903,7 @@ def delete_file(
         if not confirm:
             confirmed = require_confirmation(
                 f"Are you sure you want to delete '{file_path}' from dataset {dataset_rid}?",
-                option_name="--confirm",
+                option_name="--yes",
             )
             if not confirmed:
                 formatter.print_info("File deletion cancelled")
@@ -1116,7 +1116,7 @@ def abort_transaction(
             confirmed = require_confirmation(
                 f"Are you sure you want to abort transaction {transaction_rid}? "
                 f"This will discard all changes made in this transaction.",
-                option_name="--confirm",
+                option_name="--yes",
             )
             if not confirmed:
                 formatter.print_info("Transaction abort cancelled")
@@ -1395,7 +1395,7 @@ def add_backing_datasets(
         formatter.print_info(f"Added datasets: {', '.join(dataset_rids)}")
 
         if resolve_output_format(format) in {"json", "agent"}:
-            formatter._format_json(result)
+            formatter.format_dict(result, format)
 
     except (ProfileNotFoundError, MissingCredentialsError) as e:
         formatter.print_error(f"Authentication error: {e}")
@@ -1439,7 +1439,7 @@ def remove_backing_datasets(
         formatter.print_info(f"Removed datasets: {', '.join(dataset_rids)}")
 
         if resolve_output_format(format) in {"json", "agent"}:
-            formatter._format_json(result)
+            formatter.format_dict(result, format)
 
     except (ProfileNotFoundError, MissingCredentialsError) as e:
         formatter.print_error(f"Authentication error: {e}")
@@ -1483,7 +1483,7 @@ def replace_backing_datasets(
         formatter.print_info(f"New datasets: {', '.join(dataset_rids)}")
 
         if resolve_output_format(format) in {"json", "agent"}:
-            formatter._format_json(result)
+            formatter.format_dict(result, format)
 
     except (ProfileNotFoundError, MissingCredentialsError) as e:
         formatter.print_error(f"Authentication error: {e}")
@@ -1527,7 +1527,7 @@ def add_primary_key(
         formatter.print_info(f"Primary key fields: {', '.join(key_fields)}")
 
         if resolve_output_format(format) in {"json", "agent"}:
-            formatter._format_json(result)
+            formatter.format_dict(result, format)
 
     except (ProfileNotFoundError, MissingCredentialsError) as e:
         formatter.print_error(f"Authentication error: {e}")

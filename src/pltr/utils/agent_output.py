@@ -270,6 +270,11 @@ def build_agent_output() -> Optional[Dict[str, Any]]:
     errors: List[Any] = []
     artifacts: List[Any] = []
     pagination: Optional[Mapping[str, Any]] = None
+    if len(payloads) > 1:
+        # data is a list here, and a flat meta merge would let a later payload
+        # overwrite an earlier one's operation. Keep the per-result metadata
+        # positionally aligned with data[i].
+        meta["results"] = [dict(payload["meta"]) for payload in payloads]
     for payload in payloads:
         meta.update(payload["meta"])
         warnings.extend(payload["warnings"])

@@ -12,7 +12,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from ..utils.agent_output import resolve_output_format
+from ..utils.agent_output import buffer_agent_payload, resolve_output_format
 from ..auth.base import MissingCredentialsError, ProfileNotFoundError
 from ..services.foundry_internal_client import TokenExpiredError
 from ..services.search import SearchService
@@ -114,7 +114,12 @@ def _render_result(
     rendered_result = dict(result)
     if result.get("status") == "inconclusive":
         rendered_result["warning"] = _inconclusive_banner(result)
-    if resolve_output_format(format_type) in {"json", "agent"}:
+    if resolve_output_format(format_type) == "agent":
+        # Buffered, not returned: the caller echoes this string, and a second
+        # document on stdout is exactly what the agent contract forbids.
+        buffer_agent_payload(rendered_result, meta={"result_type": "search"})
+        return ""
+    if format_type == "json":
         return json.dumps(rendered_result, indent=2, sort_keys=True) + "\n"
     if format_type == "csv":
         return _render_csv(rendered_result)

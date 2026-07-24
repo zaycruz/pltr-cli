@@ -3,6 +3,7 @@ Main CLI entry point for pltr.
 """
 
 import io
+import re
 import sys
 
 import typer
@@ -11,6 +12,7 @@ from typing_extensions import Annotated
 from pltr import __version__
 from pltr.utils.agent_output import (
     agent_mode_enabled,
+    agent_output_pending,
     buffer_agent_payload,
     configure_agent_settings,
     flush_agent_output,
@@ -219,9 +221,26 @@ def _capture_stray_stdout():
         sys.stdout = real_stdout
         if stray.strip():
             sys.stderr.write(stray)
+            if not agent_output_pending():
+                # Some commands still report errors straight to a Rich console
+                # instead of the formatter. Their text belongs on stderr, but
+                # the caller is still owed one envelope, so wrap it and label
+                # it unstructured rather than pretend it is a result.
+                buffer_agent_payload(
+                    None,
+                    meta={"result_type": "unstructured"},
+                    errors=[
+                        {"type": "unstructured", "message": _strip_ansi(stray).strip()}
+                    ],
+                )
         flush_agent_output(real_stdout)
 
     return close
+
+
+def _strip_ansi(text: str) -> str:
+    """Drop terminal colour codes so the envelope carries readable text."""
+    return re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text)
 
 
 @app.command()
