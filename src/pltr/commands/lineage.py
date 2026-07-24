@@ -6,7 +6,12 @@ import typer
 
 from ..auth.base import MissingCredentialsError, ProfileNotFoundError
 from ..services.lineage import LineageService
-from ..utils.agent_output import agent_mode_enabled, render_agent_json
+from ..utils.agent_output import (
+    agent_mode_enabled,
+    buffer_agent_payload,
+    render_agent_json,
+    resolve_output_format,
+)
 from ..utils.completion import complete_output_format, complete_profile, complete_rid
 from ..utils.formatting import OutputFormatter
 
@@ -65,8 +70,13 @@ def get_resource_graph(
                 with open(output, "w", encoding="utf-8") as handle:
                     handle.write(rendered)
             else:
-                print(rendered, end="")
-        elif format == "json":
+                buffer_agent_payload(
+                    payload,
+                    meta={"operation": "get_resource_graph"},
+                    warnings=graph.get("coverage", {}).get("gaps", []),
+                    pagination=pagination,
+                )
+        elif resolve_output_format(format) in {"json", "agent"}:
             formatter.format_dict(graph, format, output)
         elif format == "csv":
             formatter.format_list(graph.get("edges", []), format, output)

@@ -9,7 +9,11 @@ from rich.console import Console
 from rich.table import Table
 
 from ..capabilities import ManifestValidationError, capability_manifest
-from ..utils.agent_output import render_agent_json
+from ..utils.agent_output import (
+    buffer_agent_payload,
+    render_agent_json,
+    resolve_output_format,
+)
 
 app = typer.Typer(help="Inspect native Foundry CLI capabilities")
 console = Console()
@@ -117,7 +121,7 @@ def capabilities(
     if output:
         output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(rendered, encoding="utf-8")
-    elif format in {"agent", "json"}:
-        typer.echo(rendered, nl=False)
+    elif resolve_output_format(format) == "agent":
+        buffer_agent_payload(manifest, meta={"result_type": "capability_manifest"})
     else:
         typer.echo(rendered, nl=False)

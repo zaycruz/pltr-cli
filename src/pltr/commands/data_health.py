@@ -8,6 +8,7 @@ import json
 from typing import Optional
 from rich.console import Console
 
+from ..utils.agent_output import require_confirmation
 from ..services.data_health import DataHealthService
 from ..utils.formatting import OutputFormatter
 from ..utils.progress import SpinnerProgressTracker
@@ -329,7 +330,10 @@ def delete_check(
     """
     # Handle confirmation outside try-except to avoid catching typer.Exit
     if not force:
-        confirm = typer.confirm(f"Are you sure you want to delete check '{check_rid}'?")
+        confirm = require_confirmation(
+            f"Are you sure you want to delete check '{check_rid}'?",
+            option_name="--force",
+        )
         if not confirm:
             console.print("[yellow]Cancelled[/yellow]")
             raise typer.Exit(0)

@@ -6,7 +6,12 @@ import typer
 
 from ..auth.base import MissingCredentialsError, ProfileNotFoundError
 from ..services.compass import CompassService
-from ..utils.agent_output import agent_mode_enabled, render_agent_json
+from ..utils.agent_output import (
+    agent_mode_enabled,
+    buffer_agent_payload,
+    render_agent_json,
+    resolve_output_format,
+)
 from ..utils.completion import complete_output_format, complete_profile
 from ..utils.formatting import OutputFormatter
 
@@ -30,10 +35,14 @@ def _emit_result(
             with open(output, "w", encoding="utf-8") as handle:
                 handle.write(rendered)
         else:
-            print(rendered, end="")
+            buffer_agent_payload(
+                data,
+                meta={"operation": "list_foundry_namespaces"},
+                pagination=pagination,
+            )
         return
 
-    if format == "json":
+    if resolve_output_format(format) in {"json", "agent"}:
         formatter.format_dict({"data": data, "pagination": pagination}, format, output)
     else:
         formatter.format_list(data, format, output)

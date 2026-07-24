@@ -7,6 +7,7 @@ from typing import Optional, List
 from rich.console import Console
 from rich.table import Table
 
+from ..utils.agent_output import require_confirmation, resolve_output_format
 from ..services.resource_role import ResourceRoleService
 from ..utils.formatting import OutputFormatter
 from ..utils.progress import SpinnerProgressTracker
@@ -68,7 +69,7 @@ def grant_role(
         )
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             formatter.format_dict(role_grant, format=format)
         elif format == "csv":
             formatter.format_list([role_grant], format=format)
@@ -106,8 +107,9 @@ def revoke_role(
     """Revoke a role from a principal on a resource."""
     try:
         if not confirm:
-            confirm_revoke = typer.confirm(
-                f"Are you sure you want to revoke role '{role_name}' from {principal_type} '{principal_id}' on resource {resource_rid}?"
+            confirm_revoke = require_confirmation(
+                f"Are you sure you want to revoke role '{role_name}' from {principal_type} '{principal_id}' on resource {resource_rid}?",
+                option_name="--confirm",
             )
             if not confirm_revoke:
                 formatter.print_info("Role revocation cancelled.")
@@ -187,7 +189,7 @@ def list_resource_roles(
             return
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(role_grants, output, "json")
             else:

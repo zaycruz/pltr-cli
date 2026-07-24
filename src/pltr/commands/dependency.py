@@ -11,6 +11,7 @@ from typing import Any, Callable, NoReturn, Optional
 
 import typer
 
+from ..utils.agent_output import buffer_agent_payload, resolve_output_format
 from ..auth.base import MissingCredentialsError, ProfileNotFoundError
 from ..auth.manager import AuthManager
 from ..services.dependency import (
@@ -244,7 +245,9 @@ def _fatal_payload(error: BaseException, error_class: str) -> dict[str, Any]:
 
 def _render_fatal(error: BaseException, error_class: str, format_type: str) -> None:
     payload = _fatal_payload(error, error_class)
-    if format_type == "json":
+    if resolve_output_format(format_type) == "agent":
+        buffer_agent_payload(None, meta={"result_type": "dependency"}, errors=[payload])
+    elif format_type == "json":
         typer.echo(json.dumps(payload, indent=2, sort_keys=True))
     elif format_type == "csv":
         formatter.format_dependency_result({"errors": [payload]}, "csv")

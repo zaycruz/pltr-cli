@@ -9,6 +9,7 @@ from typing import Optional
 from pathlib import Path
 from rich.console import Console
 
+from ..utils.agent_output import require_confirmation
 from ..services.streams import StreamsService
 from ..utils.formatting import OutputFormatter
 from ..utils.progress import SpinnerProgressTracker
@@ -588,8 +589,9 @@ def reset_stream(
             --confirm
     """
     if not confirm:
-        proceed = typer.confirm(
-            f"⚠️  This will delete all data in stream on branch '{branch}'. Continue?"
+        proceed = require_confirmation(
+            f"⚠️  This will delete all data in stream on branch '{branch}'. Continue?",
+            option_name="--confirm",
         )
         if not proceed:
             console.print("Operation cancelled")

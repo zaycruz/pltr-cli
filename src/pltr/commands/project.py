@@ -9,7 +9,12 @@ from rich.table import Table
 
 from ..services.compass import CompassService, UnsupportedCapabilityError
 from ..services.project import ProjectService
-from ..utils.agent_output import agent_mode_enabled, render_agent_json
+from ..utils.agent_output import (
+    agent_mode_enabled,
+    buffer_agent_payload,
+    render_agent_json,
+    resolve_output_format,
+)
 from ..utils.formatting import OutputFormatter
 from ..utils.progress import SpinnerProgressTracker
 from ..auth.base import ProfileNotFoundError, MissingCredentialsError
@@ -41,10 +46,12 @@ def _emit_project_page(
             with open(output, "w", encoding="utf-8") as handle:
                 handle.write(rendered)
         else:
-            print(rendered, end="")
+            buffer_agent_payload(
+                data, meta={"operation": operation}, pagination=pagination
+            )
         return
 
-    if format == "json":
+    if resolve_output_format(format) in {"json", "agent"}:
         formatter.format_dict({"data": data, "pagination": pagination}, format, output)
     else:
         formatter.format_list(data, format, output)
@@ -121,7 +128,7 @@ def create_project(
         formatter.print_info(f"Project RID: {project.get('rid', 'unknown')}")
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             formatter.format_dict(project, format=format)
         elif format == "csv":
             formatter.format_list([project], format=format)
@@ -168,7 +175,7 @@ def get_project(
             project = service.get_project(project_rid)
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(project, output, "json")
             else:
@@ -233,7 +240,7 @@ def list_projects(
             return
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(projects, output, "json")
             else:
@@ -355,13 +362,10 @@ def list_foundry_project_templates(
     except UnsupportedCapabilityError as e:
         message = str(e)
         if agent_mode_enabled() or format == "agent":
-            print(
-                render_agent_json(
-                    None,
-                    meta={"operation": "list_foundry_project_templates"},
-                    errors=[{"type": "unsupported", "message": message}],
-                ),
-                end="",
+            buffer_agent_payload(
+                None,
+                meta={"operation": "list_foundry_project_templates"},
+                errors=[{"type": "unsupported", "message": message}],
             )
         else:
             formatter.print_error(message)
@@ -418,7 +422,7 @@ def update_project(
         formatter.print_success(f"Successfully updated project {project_rid}")
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             formatter.format_dict(project, format=format)
         elif format == "csv":
             formatter.format_list([project], format=format)
@@ -542,7 +546,7 @@ def list_organizations(
             return
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(organizations, output, "json")
             else:
@@ -641,7 +645,7 @@ def create_from_template(
         formatter.print_info(f"Project RID: {project.get('rid', 'unknown')}")
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             formatter.format_dict(project, format=format)
         elif format == "csv":
             formatter.format_list([project], format=format)

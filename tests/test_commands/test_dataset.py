@@ -2,14 +2,31 @@
 Tests for dataset CLI commands.
 """
 
+import re
+
 import pytest
 from unittest.mock import Mock, patch
 from typer.testing import CliRunner
 
+from io import StringIO
+
 from pltr.commands.dataset import app
+from pltr.utils.agent_output import flush_agent_output
 from pltr.auth.base import ProfileNotFoundError, MissingCredentialsError
 
 runner = CliRunner()
+
+
+def _plain(text: str) -> str:
+    """Strip Click's error rendering so the assertion tests behavior, not layout.
+
+    Typer renders usage errors as a plain line locally but as a Rich panel in
+    CI, where box glyphs and wrapping split the message apart. Normalizing
+    keeps the assertion about the rejected option itself.
+    """
+    without_ansi = re.sub(r"\x1b\[[0-9;]*m", "", text)
+    without_box = re.sub(r"[\u2500-\u257f]", " ", without_ansi)
+    return re.sub(r"\s+", " ", without_box).strip()
 
 
 @pytest.fixture
@@ -71,8 +88,12 @@ def test_dataset_stats_success_and_pagination(mock_dataset_service):
         max_pages=1,
         fetch_all=True,
     )
-    assert '"schema_version": "pltr-agent-v1"' in result.stdout
-    assert '"next_page_token": "next"' in result.stdout
+    # The root callback owns the single flush, so a sub-app invocation drains
+    # the buffer here. End-to-end stdout is covered by the envelope contract.
+    rendered = flush_agent_output(StringIO())
+    assert rendered is not None
+    assert '"schema_version": "pltr-agent-v1"' in rendered
+    assert '"next_page_token": "next"' in rendered
 
 
 def test_get_dataset_success(mock_dataset_service, sample_dataset):
@@ -483,5 +504,5 @@ def test_list_transactions_rejects_removed_branch_option(mock_dataset_service):
     )
 
     assert result.exit_code == 2
-    assert "No such option: --branch" in result.stderr
+    assert "No such option: --branch" in _plain(result.stderr)
     mock_dataset_service.get_transactions.assert_not_called()

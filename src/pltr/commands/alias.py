@@ -6,6 +6,11 @@ from typing import Optional
 import typer
 from rich import print as rprint
 
+from ..utils.agent_output import (
+    agent_mode_enabled,
+    buffer_agent_payload,
+    require_confirmation,
+)
 from pltr.config.aliases import AliasManager
 from pltr.utils.completion import complete_alias_names
 
@@ -80,7 +85,9 @@ def remove(
         raise typer.Exit(1)
 
     if confirm:
-        confirmation = typer.confirm(f"Remove alias '{name}' → {command}?")
+        confirmation = require_confirmation(
+            f"Remove alias '{name}' → {command}?", option_name="--no-confirm"
+        )
         if not confirmation:
             rprint("[yellow]Removal cancelled[/yellow]")
             return
@@ -121,6 +128,9 @@ def edit(
 def list_aliases() -> None:
     """List all command aliases."""
     manager = AliasManager()
+    if agent_mode_enabled():
+        buffer_agent_payload(manager.list_aliases(), meta={"operation": "list_aliases"})
+        return
     manager.display_aliases()
 
 
@@ -132,6 +142,16 @@ def show(
 ) -> None:
     """Show details of a specific alias."""
     manager = AliasManager()
+    if agent_mode_enabled():
+        aliases = manager.list_aliases()
+        buffer_agent_payload(
+            {name: aliases.get(name)},
+            meta={"operation": "show_alias"},
+            errors=[]
+            if name in aliases
+            else [{"type": "not_found", "message": f"Alias '{name}' not found"}],
+        )
+        return
     manager.display_aliases(name)
 
 
@@ -146,16 +166,24 @@ def clear(
 
     aliases = manager.list_aliases()
     if not aliases:
+        if agent_mode_enabled():
+            buffer_agent_payload({"cleared": 0}, meta={"operation": "clear_aliases"})
+            return
         rprint("[yellow]No aliases to clear[/yellow]")
         return
 
     if confirm:
-        confirmation = typer.confirm(f"Clear all {len(aliases)} aliases?")
+        confirmation = require_confirmation(
+            f"Clear all {len(aliases)} aliases?", option_name="--no-confirm"
+        )
         if not confirmation:
             rprint("[yellow]Clear cancelled[/yellow]")
             return
 
     count = manager.clear_all()
+    if agent_mode_enabled():
+        buffer_agent_payload({"cleared": count}, meta={"operation": "clear_aliases"})
+        return
     rprint(f"[green]Cleared {count} aliases[/green]")
 
 
@@ -170,6 +198,9 @@ def export_aliases(
     aliases = manager.export_aliases()
 
     if not aliases:
+        if agent_mode_enabled():
+            buffer_agent_payload({}, meta={"operation": "export_aliases"})
+            return
         rprint("[yellow]No aliases to export[/yellow]")
         return
 
@@ -179,6 +210,8 @@ def export_aliases(
         with open(output, "w") as f:
             f.write(json_data)
         rprint(f"[green]Exported {len(aliases)} aliases to {output}[/green]")
+    elif agent_mode_enabled():
+        buffer_agent_payload(aliases, meta={"operation": "export_aliases"})
     else:
         print(json_data)
 
@@ -206,7 +239,9 @@ def import_aliases(
 
     # Clear existing aliases if not merging
     if not merge and manager.list_aliases():
-        confirmation = typer.confirm("Replace existing aliases?")
+        confirmation = require_confirmation(
+            "Replace existing aliases?", option_name="--merge"
+        )
         if not confirmation:
             rprint("[yellow]Import cancelled[/yellow]")
             return

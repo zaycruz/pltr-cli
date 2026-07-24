@@ -2,13 +2,21 @@
 Main CLI entry point for pltr.
 """
 
+import io
+import re
 import sys
 
 import typer
 from typing_extensions import Annotated
 
 from pltr import __version__
-from pltr.utils.agent_output import configure_agent_settings
+from pltr.utils.agent_output import (
+    agent_mode_enabled,
+    agent_output_pending,
+    buffer_agent_payload,
+    configure_agent_settings,
+    flush_agent_output,
+)
 from pltr.utils.tracing import command_paths_for_app, run_with_tracing
 from pltr.commands import (
     configure,
@@ -165,6 +173,7 @@ def version_callback(value: bool):
 
 @app.callback()
 def main(
+    ctx: typer.Context,
     version: Annotated[
         bool, typer.Option("--version", callback=version_callback, help="Show version")
     ] = False,
@@ -187,11 +196,59 @@ def main(
     SQL queries, and more.
     """
     configure_agent_settings(enabled=agent, non_interactive=non_interactive)
+    # Click closes the context even when the command raises or exits, so this
+    # is the one place that guarantees exactly one envelope reaches stdout.
+    if agent:
+        ctx.call_on_close(_capture_stray_stdout())
+    else:
+        ctx.call_on_close(flush_agent_output)
+
+
+def _capture_stray_stdout():
+    """Reserve stdout for the envelope; divert human chatter to stderr.
+
+    Commands print Rich tables, spinners and status lines through several
+    different consoles. Rather than police each call site, agent mode swaps
+    stdout for a buffer: whatever a command writes lands on stderr, and the
+    single envelope is the only thing a caller parsing stdout ever sees.
+    """
+    real_stdout = sys.stdout
+    captured = io.StringIO()
+    sys.stdout = captured
+
+    def close() -> None:
+        stray = captured.getvalue()
+        sys.stdout = real_stdout
+        if stray.strip():
+            sys.stderr.write(stray)
+            if not agent_output_pending():
+                # Some commands still report errors straight to a Rich console
+                # instead of the formatter. Their text belongs on stderr, but
+                # the caller is still owed one envelope, so wrap it and label
+                # it unstructured rather than pretend it is a result.
+                buffer_agent_payload(
+                    None,
+                    meta={"result_type": "unstructured"},
+                    errors=[
+                        {"type": "unstructured", "message": _strip_ansi(stray).strip()}
+                    ],
+                )
+        flush_agent_output(real_stdout)
+
+    return close
+
+
+def _strip_ansi(text: str) -> str:
+    """Drop terminal colour codes so the envelope carries readable text."""
+    return re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text)
 
 
 @app.command()
 def hello():
     """Test command to verify CLI is working."""
+    if agent_mode_enabled():
+        buffer_agent_payload({"status": "ok"}, meta={"operation": "hello"})
+        return
     typer.echo("Hello from pltr! 🚀")
     typer.echo("CLI is working correctly.")
 

@@ -7,6 +7,7 @@ from typing import Optional, List
 from rich.console import Console
 from rich.table import Table
 
+from ..utils.agent_output import require_confirmation, resolve_output_format
 from ..services.space import SpaceService
 from ..utils.formatting import OutputFormatter
 from ..utils.progress import SpinnerProgressTracker
@@ -83,7 +84,7 @@ def create_space(
         )
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             formatter.format_dict(space, format=format)
         elif format == "csv":
             formatter.format_list([space], format=format)
@@ -128,7 +129,7 @@ def get_space(
             space = service.get_space(space_rid)
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(space, output, "json")
             else:
@@ -193,7 +194,7 @@ def list_spaces(
             return
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(spaces, output, "json")
             else:
@@ -259,7 +260,7 @@ def update_space(
         formatter.print_success(f"Successfully updated space {space_rid}")
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             formatter.format_dict(space, format=format)
         elif format == "csv":
             formatter.format_list([space], format=format)
@@ -287,8 +288,9 @@ def delete_space(
     """Delete a space."""
     try:
         if not confirm:
-            confirm_delete = typer.confirm(
-                f"Are you sure you want to delete space {space_rid}?"
+            confirm_delete = require_confirmation(
+                f"Are you sure you want to delete space {space_rid}?",
+                option_name="--confirm",
             )
             if not confirm_delete:
                 formatter.print_info("Space deletion cancelled.")

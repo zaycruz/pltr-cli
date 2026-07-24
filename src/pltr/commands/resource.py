@@ -9,7 +9,7 @@ from rich.table import Table
 
 from ..services.resource import ResourceService
 from ..utils.formatting import OutputFormatter
-from ..utils.agent_output import require_confirmation
+from ..utils.agent_output import require_confirmation, resolve_output_format
 from ..utils.progress import SpinnerProgressTracker
 from ..auth.base import ProfileNotFoundError, MissingCredentialsError
 from ..utils.completion import (
@@ -56,7 +56,7 @@ def get_resource(
             resource = service.get_resource(resource_rid)
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(resource, output, "json")
             else:
@@ -114,7 +114,7 @@ def get_resource_by_path(
             cache_rid(resource["rid"])
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(resource, output, "json")
             else:
@@ -191,7 +191,7 @@ def list_resources(
             return
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(resources, output, "json")
             else:
@@ -270,7 +270,7 @@ def search_resources(
             return
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(resources, output, "json")
             else:
@@ -328,7 +328,7 @@ def get_resources_batch(
                 cache_rid(resource["rid"])
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(resources, output, "json")
             else:
@@ -574,7 +574,7 @@ def list_markings(
             return
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(markings, output, "json")
             else:
@@ -630,7 +630,7 @@ def get_access_requirements(
             requirements = service.get_access_requirements(resource_rid)
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(requirements, output, "json")
             else:
@@ -698,7 +698,7 @@ def get_resources_by_path_batch(
                 cache_rid(resource["rid"])
 
         # Format output
-        if format == "json":
+        if resolve_output_format(format) in {"json", "agent"}:
             if output:
                 formatter.save_to_file(resources, output, "json")
             else:

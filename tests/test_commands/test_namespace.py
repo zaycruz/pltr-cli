@@ -4,7 +4,10 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
+from io import StringIO
+
 from pltr.commands.namespace import app
+from pltr.utils.agent_output import flush_agent_output
 from pltr.utils.pagination import PaginationMetadata, PaginationResult
 
 runner = CliRunner()
@@ -24,8 +27,12 @@ def test_namespace_list_uses_agent_envelope() -> None:
         result = runner.invoke(app, ["--page-size", "5"])
 
     assert result.exit_code == 0
-    assert '"operation": "list_foundry_namespaces"' in result.stdout
-    assert '"next_page_token": "next"' in result.stdout
+    # The root callback owns the single flush, so a sub-app invocation drains
+    # the buffer here. End-to-end stdout is covered by the envelope contract.
+    rendered = flush_agent_output(StringIO())
+    assert rendered is not None
+    assert '"operation": "list_foundry_namespaces"' in rendered
+    assert '"next_page_token": "next"' in rendered
 
 
 def test_namespace_list_error_returns_nonzero() -> None:

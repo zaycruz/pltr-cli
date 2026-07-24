@@ -10,6 +10,7 @@ from typing import Optional
 import typer
 from rich.console import Console
 
+from ..utils.agent_output import require_confirmation
 from ..auth.base import MissingCredentialsError, ProfileNotFoundError
 from ..services.widgets import WidgetsService
 from ..utils.completion import (
@@ -275,8 +276,9 @@ def delete_release(
         cache_rid(widget_set_rid)
 
         if not yes:
-            confirm = typer.confirm(
-                f"Are you sure you want to delete release {release_version}?"
+            confirm = require_confirmation(
+                f"Are you sure you want to delete release {release_version}?",
+                option_name="--yes",
             )
             if not confirm:
                 formatter.print_info("Operation cancelled")

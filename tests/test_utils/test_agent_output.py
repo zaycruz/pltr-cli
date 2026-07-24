@@ -1,12 +1,14 @@
 """Tests for the stable agent output and execution policy helpers."""
 
 import json
+from io import StringIO
 
 import pytest
 
 from pltr.utils.agent_output import (
     AgentPolicyError,
     configure_agent_settings,
+    flush_agent_output,
     redact_value,
     render_agent_json,
     require_confirmation,
@@ -47,13 +49,19 @@ def test_agent_json_preserves_pagination_cursors_but_redacts_credentials() -> No
 
 
 def test_formatter_uses_agent_envelope_when_enabled(capsys) -> None:
+    # The formatter now records the result instead of writing it: a command
+    # that renders more than once must still produce one envelope. The flush
+    # at the end of the invocation is what reaches stdout.
     configure_agent_settings(enabled=True)
     try:
         OutputFormatter().format_output({"value": 3}, "table")
+        rendered = flush_agent_output(StringIO())
     finally:
         configure_agent_settings()
 
-    payload = json.loads(capsys.readouterr().out)
+    assert rendered is not None
+    assert capsys.readouterr().out == ""
+    payload = json.loads(rendered)
     assert payload["schema_version"] == "pltr-agent-v1"
     assert payload["data"] == {"value": 3}
     assert payload["meta"]["result_type"] == "dict"
