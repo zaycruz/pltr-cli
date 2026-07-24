@@ -1,6 +1,7 @@
 """Versioned capability manifest for the native, agent-first Foundry CLI."""
 
 from dataclasses import asdict, dataclass
+from functools import lru_cache
 from typing import Any, Iterable, Mapping, Optional, Sequence
 
 
@@ -105,7 +106,7 @@ _TOOL_ROWS: tuple[tuple[str, str, str, str, str], ...] = (
     (
         "dataset",
         "create_and_write_to_foundry_dataset",
-        "dataset create/files upload",
+        "dataset create",
         "DatasetService",
         "official-catalog",
     ),
@@ -168,7 +169,7 @@ _TOOL_ROWS: tuple[tuple[str, str, str, str, str], ...] = (
     (
         "ontology",
         "search_foundry_ontology",
-        "ontology search",
+        "ontology object-search",
         "OntologyService",
         "official-catalog",
     ),
@@ -189,7 +190,7 @@ _TOOL_ROWS: tuple[tuple[str, str, str, str, str], ...] = (
     (
         "ontology",
         "create_or_update_foundry_object_type",
-        "ontology object-type-upsert",
+        "ontology object-type-create",
         "ObjectTypeService",
         "official-catalog",
     ),
@@ -210,7 +211,7 @@ _TOOL_ROWS: tuple[tuple[str, str, str, str, str], ...] = (
     (
         "ontology",
         "create_or_update_foundry_link_type",
-        "ontology link-type-upsert",
+        "ontology link-type-create",
         "ObjectTypeService",
         "official-catalog",
     ),
@@ -245,7 +246,7 @@ _TOOL_ROWS: tuple[tuple[str, str, str, str, str], ...] = (
     (
         "object-set",
         "query_ontology_objects",
-        "ontology object-query",
+        "ontology query-execute",
         "OntologyObjectService",
         "official-catalog",
     ),
@@ -552,11 +553,60 @@ _TOOL_ROWS: tuple[tuple[str, str, str, str, str], ...] = (
     ),
 )
 
-_U3_IMPLEMENTED: dict[str, str] = {
+# Richer evidence for a few implemented capabilities. This no longer drives
+# status — status is derived from whether the mapped command actually exists in
+# the CLI (see _spec_status) — it only replaces the generic "official-catalog"
+# evidence string with the concrete SDK path when one is known.
+_IMPLEMENTED_EVIDENCE: dict[str, str] = {
     "get_project_imports": "foundry-platform-sdk==1.95.0: filesystem.Project.Reference.list",
     "search_foundry_projects": "foundry-platform-sdk==1.95.0: filesystem.Space.list + Folder.children",
     "get_dataset_stats": "foundry-platform-sdk==1.95.0: datasets.Dataset.File.list + Dataset.transactions",
     "get_resource_graph": "foundry-platform-sdk==1.95.0: filesystem.Resource.get + Folder.children + Project.Reference.list",
+}
+
+# Out of scope for a Foundry operations CLI. These MCP tools fetch
+# documentation, generate or inspect SDK code, or drive a local IDE / dev
+# console -- none of which are Foundry control-plane operations. They are
+# reported so the parity picture is complete, marked unsupported (with a
+# reason) rather than dangled as "planned" work this CLI intends to build.
+_DOC_REASON = (
+    "Documentation retrieval is an IDE-assistant function, not a Foundry "
+    "operation; this CLI does not proxy Palantir's documentation."
+)
+_SDK_REASON = (
+    "SDK generation and inspection is a codegen / IDE-assistant function "
+    "outside the scope of a Foundry operations CLI."
+)
+_WORKSPACE_REASON = (
+    "Local workspace and dev-console actions run in an IDE, not a headless CLI."
+)
+_UNSUPPORTED: dict[str, str] = {
+    # documentation retrieval
+    "get_python_transforms_documentation": _DOC_REASON,
+    "get_typescript_v1_functions_documentation": _DOC_REASON,
+    "get_typescript_v2_functions_documentation": _DOC_REASON,
+    "get_custom_widget_documentation": _DOC_REASON,
+    "get_ml_documentation": _DOC_REASON,
+    "get_spark_profile_documentation": _DOC_REASON,
+    "get_osdk_react_components_documentation": _DOC_REASON,
+    "get_compute_modules_documentation": _DOC_REASON,
+    "load_foundry_documentation_page": _DOC_REASON,
+    "get_documentation_summaries": _DOC_REASON,
+    "search_foundry_documentation": _DOC_REASON,
+    # SDK / OSDK codegen and inspection
+    "get_ontology_sdk_context": _SDK_REASON,
+    "get_ontology_sdk_examples": _SDK_REASON,
+    "list_platform_sdk_apis": _SDK_REASON,
+    "get_platform_sdk_api_reference": _SDK_REASON,
+    "convert_to_osdk_react": _SDK_REASON,
+    "generate_new_ontology_sdk_version": _SDK_REASON,
+    "install_sdk_package": _SDK_REASON,
+    "view_osdk_definition": _SDK_REASON,
+    # local IDE / dev console / workspace
+    "connect_to_dev_console_app": _WORKSPACE_REASON,
+    "clone_code_repository_locally": _WORKSPACE_REASON,
+    "get_repository_context": _WORKSPACE_REASON,
+    "create_python_transforms_code_repository": _WORKSPACE_REASON,
 }
 
 _U3_TEST_REFERENCES: dict[str, str] = {
@@ -592,7 +642,54 @@ _WORKFLOW_ROWS: tuple[tuple[str, str, str, str, str], ...] = (
 )
 
 
-def _build_specs() -> tuple[CapabilitySpec, ...]:
+@lru_cache(maxsize=1)
+def registered_command_paths() -> frozenset[str]:
+    """Every command path registered on the live Typer app.
+
+    Imported lazily so this module never triggers a circular import at load
+    time. By the time this runs (a command invocation or a test) the CLI is
+    fully assembled. This is the same surface `pltr agent-manifest` emits, so a
+    capability marked implemented is guaranteed to name a command that exists.
+    """
+    import click
+    from typer.main import get_command
+
+    from pltr.cli import app
+
+    paths: set[str] = set()
+
+    def _walk(command: click.Command, prefix: tuple[str, ...] = ()) -> None:
+        if isinstance(command, click.Group):
+            for name, sub in command.commands.items():
+                _walk(sub, (*prefix, name))
+        elif prefix:
+            paths.add(" ".join(prefix))
+
+    _walk(get_command(app))
+    return frozenset(paths)
+
+
+def _spec_status(
+    capability_id: str, command: str, command_paths: frozenset[str]
+) -> tuple[str, Optional[str], Optional[str]]:
+    """Derive (status, blocked_reason, evidence_override) for one capability.
+
+    Status is computed, not stored, so `capabilities` can never drift from the
+    real command surface: implemented iff the mapped command exists today.
+    """
+    if capability_id in _U3_BLOCKED:
+        return "blocked", _U3_BLOCKED[capability_id], None
+    if capability_id in _UNSUPPORTED:
+        return "unsupported", _UNSUPPORTED[capability_id], None
+    if command in command_paths:
+        return "implemented", None, _IMPLEMENTED_EVIDENCE.get(capability_id)
+    return "planned", None, None
+
+
+def _build_specs(
+    command_paths: Optional[frozenset[str]] = None,
+) -> tuple[CapabilitySpec, ...]:
+    paths = command_paths if command_paths is not None else registered_command_paths()
     specs: list[CapabilitySpec] = []
     for group, capability_id, command, service, evidence in (
         *_TOOL_ROWS,
@@ -603,15 +700,9 @@ def _build_specs() -> tuple[CapabilitySpec, ...]:
             mutation_risk = "write"
         if capability_id.startswith(("delete_", "close_")):
             mutation_risk = "destructive"
-        status = "planned"
-        api_evidence = evidence
-        blocked_reason: Optional[str] = None
-        if capability_id in _U3_IMPLEMENTED:
-            status = "implemented"
-            api_evidence = _U3_IMPLEMENTED[capability_id]
-        elif capability_id in _U3_BLOCKED:
-            status = "blocked"
-            blocked_reason = _U3_BLOCKED[capability_id]
+        status, blocked_reason, evidence_override = _spec_status(
+            capability_id, command, paths
+        )
         specs.append(
             CapabilitySpec(
                 capability_id=capability_id,
@@ -619,7 +710,7 @@ def _build_specs() -> tuple[CapabilitySpec, ...]:
                 group=group,
                 command=command,
                 service=service,
-                api_evidence=api_evidence,
+                api_evidence=evidence_override or evidence,
                 status=status,
                 mutation_risk=mutation_risk,
                 output_contract="agent-v1",
@@ -633,7 +724,18 @@ def _build_specs() -> tuple[CapabilitySpec, ...]:
     return tuple(specs)
 
 
-CAPABILITIES: tuple[CapabilitySpec, ...] = _build_specs()
+@lru_cache(maxsize=1)
+def all_capabilities() -> tuple[CapabilitySpec, ...]:
+    """The full capability set with status derived from the live command surface."""
+    return _build_specs()
+
+
+def __getattr__(name: str) -> Any:
+    # PEP 562: keep `from pltr.capabilities import CAPABILITIES` working without
+    # walking the Typer app at module-import time (which would be circular).
+    if name == "CAPABILITIES":
+        return all_capabilities()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def _validation_errors(specs: Iterable[CapabilitySpec]) -> list[str]:
@@ -700,15 +802,23 @@ def _validation_errors(specs: Iterable[CapabilitySpec]) -> list[str]:
     return errors
 
 
-def validate_capabilities(specs: Iterable[CapabilitySpec] = CAPABILITIES) -> None:
+def validate_capabilities(
+    specs: Optional[Iterable[CapabilitySpec]] = None,
+) -> None:
     """Validate a capability collection, raising one deterministic error."""
+    if specs is None:
+        specs = all_capabilities()
     errors = _validation_errors(specs)
     if errors:
         raise ManifestValidationError(errors)
 
 
-def manifest_payload(specs: Iterable[CapabilitySpec] = CAPABILITIES) -> dict[str, Any]:
+def manifest_payload(
+    specs: Optional[Iterable[CapabilitySpec]] = None,
+) -> dict[str, Any]:
     """Return the complete versioned manifest payload."""
+    if specs is None:
+        specs = all_capabilities()
     entries = tuple(specs)
     validate_capabilities(entries)
     capabilities = [entry.as_dict() for entry in entries]
@@ -733,7 +843,7 @@ def manifest_payload(specs: Iterable[CapabilitySpec] = CAPABILITIES) -> dict[str
 
 
 def capability_manifest(
-    specs: Iterable[CapabilitySpec] = CAPABILITIES,
+    specs: Optional[Iterable[CapabilitySpec]] = None,
 ) -> Mapping[str, Any]:
     """Return the validated native CLI capability manifest."""
     return manifest_payload(specs)

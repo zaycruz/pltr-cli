@@ -15,7 +15,10 @@ from ..utils.agent_output import (
     resolve_output_format,
 )
 
-app = typer.Typer(help="Inspect native Foundry CLI capabilities")
+app = typer.Typer(
+    help="Score this CLI against Palantir's MCP tool catalog "
+    "(parity, not the command list -- use `pltr agent-manifest` for that)"
+)
 console = Console()
 
 
@@ -95,7 +98,14 @@ def capabilities(
         help="Write the manifest to a file",
     ),
 ) -> None:
-    """Show the native agent-first Foundry CLI capability manifest."""
+    """Report parity against Palantir's published MCP tool catalog.
+
+    This is a scorecard, not the command list: each of the ~73 MCP tools is
+    marked implemented (a real CLI command exists), planned (a genuine gap),
+    blocked (the SDK cannot do it), or unsupported (out of scope for a Foundry
+    CLI -- documentation, SDK codegen, dev-console). To discover the commands
+    themselves, run `pltr agent-manifest`.
+    """
     if ctx.invoked_subcommand is not None:
         return
 
