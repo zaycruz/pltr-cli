@@ -2,6 +2,8 @@
 Tests for dataset CLI commands.
 """
 
+import re
+
 import pytest
 from unittest.mock import Mock, patch
 from typer.testing import CliRunner
@@ -13,6 +15,18 @@ from pltr.utils.agent_output import flush_agent_output
 from pltr.auth.base import ProfileNotFoundError, MissingCredentialsError
 
 runner = CliRunner()
+
+
+def _plain(text: str) -> str:
+    """Strip Click's error rendering so the assertion tests behavior, not layout.
+
+    Typer renders usage errors as a plain line locally but as a Rich panel in
+    CI, where box glyphs and wrapping split the message apart. Normalizing
+    keeps the assertion about the rejected option itself.
+    """
+    without_ansi = re.sub(r"\x1b\[[0-9;]*m", "", text)
+    without_box = re.sub(r"[\u2500-\u257f]", " ", without_ansi)
+    return re.sub(r"\s+", " ", without_box).strip()
 
 
 @pytest.fixture
@@ -490,5 +504,5 @@ def test_list_transactions_rejects_removed_branch_option(mock_dataset_service):
     )
 
     assert result.exit_code == 2
-    assert "No such option: --branch" in result.stderr
+    assert "No such option: --branch" in _plain(result.stderr)
     mock_dataset_service.get_transactions.assert_not_called()
