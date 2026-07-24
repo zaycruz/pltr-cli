@@ -127,7 +127,62 @@ comes from `Schedule.action.target`, never from a build response. Dynamically
 resolved upstream lineage, output kinds omitted by the API, application internals,
 Workshop internals, and standalone Function reverse wiring remain explicit gaps.
 
+## Resource Discovery Commands
+
+### `pltr search TEXT`
+
+Search resources by legacy title, or search one bounded Compass path.
+
+```bash
+# Legacy title search
+pltr search "sales data" --limit 25 --format json
+
+# Path-scoped, paginated search
+pltr search "sales" \
+  --path-prefix "/Finance" \
+  --resource-type Dataset \
+  --page-size 100 \
+  --format json
+
+# Continue from the prior response
+pltr search "sales" \
+  --path-prefix "/Finance" \
+  --page-size 100 \
+  --page-token TOKEN \
+  --format json
+```
+
+In path-scoped mode, only `--path-prefix` is applied by the server. `TEXT` and
+`--resource-type` filter the returned page locally. Read `coverage`,
+`server_page_count`, and `next_page_token` before you infer completeness.
+Legacy title search has no continuation token and cannot prove that a capped
+result is complete.
+
+### `pltr notepad list`
+
+Enumerate notepads from an explicit Compass path.
+
+```bash
+pltr notepad list \
+  --path-prefix "/Finance" \
+  --page-size 100 \
+  --format json
+```
+
+At least one `--path-prefix` is required. The command never guesses an instance
+root. It filters the live resource type `Notepad document` from the returned
+page and exposes `next_page_token` for continuation.
+
+### `pltr notepad get NOTEPAD_RID`
+
+Read the latest body and embedded resource references for one notepad.
+
+```bash
+pltr notepad get ri.notepad.main.notepad.example --format json
+```
+
 ---
+
 
 ## 🔧 Configuration Commands
 
@@ -158,31 +213,32 @@ pltr configure configure --profile prod --auth-type token --host foundry.company
 pltr configure configure --profile dev --auth-type oauth --host dev.foundry.com --client-id "id" --client-secret "secret"
 ```
 
-#### `pltr configure list-profiles`
-List all configured profiles.
+#### `pltr configure list`
+List all configured profiles without exposing stored credentials. Global
+`--agent` returns one `pltr-agent-v1` JSON envelope.
 
 **Example:**
 ```bash
-pltr configure list-profiles
+pltr --agent configure list
 ```
 
-#### `pltr configure set-default PROFILE`
+#### `pltr configure use PROFILE`
 Set a profile as the default.
 
 **Example:**
 ```bash
-pltr configure set-default production
+pltr configure use production
 ```
 
 #### `pltr configure delete [OPTIONS] PROFILE`
 Delete a profile.
 
 **Options:**
-- `--force`, `-f`: Skip confirmation
+- `--force`, `-f`: Skip confirmation. Required with global `--non-interactive`.
 
 **Example:**
 ```bash
-pltr configure delete old-profile --force
+pltr --non-interactive configure delete old-profile --force
 ```
 
 ---

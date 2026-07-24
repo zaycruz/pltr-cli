@@ -61,10 +61,10 @@ pltr configure configure --profile production
 pltr configure configure --profile development
 
 # List profiles
-pltr configure list-profiles
+pltr configure list
 
 # Set default profile
-pltr configure set-default production
+pltr configure use production
 
 # Use specific profile
 pltr verify --profile development
@@ -74,7 +74,7 @@ pltr verify --profile development
 
 ```bash
 # List all profiles
-pltr configure list-profiles
+pltr configure list
 
 # Delete profile
 pltr configure delete old-profile --force
