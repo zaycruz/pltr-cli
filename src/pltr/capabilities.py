@@ -674,8 +674,13 @@ def _spec_status(
 ) -> tuple[str, Optional[str], Optional[str]]:
     """Derive (status, blocked_reason, evidence_override) for one capability.
 
-    Status is computed, not stored, so `capabilities` can never drift from the
-    real command surface: implemented iff the mapped command exists today.
+    Precedence matters. A capability the SDK cannot do (`blocked`) or that is
+    out of scope for a CLI (`unsupported`) is classified explicitly and keeps
+    that status even when it names a real fallback command. Everything else is
+    classified against the live command surface: `implemented` iff the mapped
+    command exists today, `planned` otherwise. So the implemented/planned split
+    can never drift from the commands that actually ship, while blocked and
+    unsupported stay authoritative.
     """
     if capability_id in _U3_BLOCKED:
         return "blocked", _U3_BLOCKED[capability_id], None
