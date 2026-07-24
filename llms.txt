@@ -14,7 +14,7 @@ Install the pltr CLI (Palantir Foundry) for me, end to end:
 2. Confirm it works: run `pltr --help` and show me the command groups.
 3. Set up auth: ask me for my Foundry host and API token, then export FOUNDRY_HOST and FOUNDRY_TOKEN, or run `pltr configure configure`. I may have more than one Foundry environment — support named profiles.
 4. Verify the connection: run `pltr verify`.
-5. For automation, note that every command accepts `--agent` for a stable JSON envelope; run `pltr --agent capabilities` to show the machine-readable command surface.
+5. For automation, note that every command accepts `--agent` for a stable JSON envelope; run `pltr --agent agent-manifest` to show the machine-readable command surface.
 ```
 
 ## Install
@@ -38,8 +38,10 @@ Add `--agent` to any command to get one stable JSON envelope (schema_version `pl
 Discover the command surface first:
 
 ```
-pltr --agent capabilities
+pltr --agent agent-manifest
 ```
+
+That emits every registered command with its path, arguments and flags. `pltr --agent capabilities` is a different thing: a parity scorecard tracking this CLI against Palantir's published MCP tool catalog. Read it to see what is planned or blocked, not to discover commands.
 
 ## Change-impact gate (run before any Foundry change)
 
