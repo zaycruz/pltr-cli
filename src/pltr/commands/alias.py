@@ -129,9 +129,7 @@ def list_aliases() -> None:
     """List all command aliases."""
     manager = AliasManager()
     if agent_mode_enabled():
-        buffer_agent_payload(
-            manager.list_aliases(), meta={"operation": "list_aliases"}
-        )
+        buffer_agent_payload(manager.list_aliases(), meta={"operation": "list_aliases"})
         return
     manager.display_aliases()
 

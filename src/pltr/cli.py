@@ -211,10 +211,11 @@ def _capture_stray_stdout():
     single envelope is the only thing a caller parsing stdout ever sees.
     """
     real_stdout = sys.stdout
-    sys.stdout = io.StringIO()
+    captured = io.StringIO()
+    sys.stdout = captured
 
     def close() -> None:
-        stray = sys.stdout.getvalue()
+        stray = captured.getvalue()
         sys.stdout = real_stdout
         if stray.strip():
             sys.stderr.write(stray)
