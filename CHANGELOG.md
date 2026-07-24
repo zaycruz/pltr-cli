@@ -5,17 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.24.0] - 2026-07-24
 
 ### Added
 
 - Added bounded, paginated cross-resource discovery to `pltr search` with verified path-prefix filtering, page tokens, and explicit page-local text/type filter coverage.
 - Added `pltr notepad list` to enumerate notepad resources from an explicit Compass path prefix.
+- Added the `pltr-agent-v1` envelope and registered command manifest for reliable agent-facing CLI use.
 
 ### Fixed
 
 - `pltr configure list` now honors global `--agent` output and redacts credentials.
 - `pltr configure delete` now rejects prompt-dependent execution under `--non-interactive` unless `--force` is supplied.
+- Repaired SDK call paths and added contract coverage for the current Foundry SDK surface.
+
+### Documentation
+
+- Updated the README, command reference, troubleshooting guide, and agent skill documentation for the agent-first CLI contracts.
 
 ## [0.23.0] - 2026-07-23
 

@@ -1,6 +1,6 @@
 [project]
 name = "pltr-cli"
-version = "0.23.0"
+version = "0.24.0"
 description = "Agent-native fork of anjor/pltr-cli: command-line interface for Palantir Foundry APIs"
 authors = [
     { name = "Anjor Kanekar" },
