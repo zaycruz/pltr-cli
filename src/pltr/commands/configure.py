@@ -179,9 +179,7 @@ def list_profiles():
         raise
     except Exception:
         if agent_mode:
-            buffer_agent_message(
-                "Could not list configured profiles", level="error"
-            )
+            buffer_agent_message("Could not list configured profiles", level="error")
             raise typer.Exit(1)
         raise
 
@@ -278,9 +276,7 @@ def delete(
         raise
     except Exception:
         if agent_mode:
-            buffer_agent_message(
-                f"Could not delete profile '{profile}'", level="error"
-            )
+            buffer_agent_message(f"Could not delete profile '{profile}'", level="error")
             raise typer.Exit(1)
         raise
 
@@ -325,8 +321,6 @@ def delete(
         raise
     except Exception:
         if agent_mode:
-            buffer_agent_message(
-                f"Could not delete profile '{profile}'", level="error"
-            )
+            buffer_agent_message(f"Could not delete profile '{profile}'", level="error")
             raise typer.Exit(1)
         raise
