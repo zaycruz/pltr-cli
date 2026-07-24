@@ -26,7 +26,7 @@ Install the pltr CLI (Palantir Foundry) for me, end to end:
 2. Confirm it works: run `pltr --help` and show me the command groups.
 3. Set up auth: ask me for my Foundry host and API token, then export FOUNDRY_HOST and FOUNDRY_TOKEN, or run `pltr configure configure`. I may have more than one Foundry environment — support named profiles.
 4. Verify the connection: run `pltr verify`.
-5. For automation, note that every command accepts `--agent` for a stable JSON envelope; run `pltr --agent capabilities` to show the machine-readable command surface.
+5. For automation, note that every command accepts `--agent` for a stable JSON envelope; run `pltr --agent agent-manifest` to show the machine-readable command surface.
 ```
 
 ### Install it yourself
@@ -57,6 +57,8 @@ pltr configure configure
 # Or use environment variables (CI / automation):
 export FOUNDRY_TOKEN="your-api-token"
 export FOUNDRY_HOST="foundry.company.com"
+# Used only when no --profile is given and no profile is configured,
+# so an exported variable never overrides a stored profile.
 
 # Confirm it works:
 pltr verify
@@ -91,7 +93,7 @@ Nine capability areas and two global flags that upstream does not have:
 
 ### Machine-readable grammar
 
-`pltr agent-manifest` emits every registered command as deterministic JSON, so an agent discovers the surface without parsing `--help` text. `pltr capabilities` reports which native agent-first Foundry capabilities are reachable on your stack. [Details below](#agent-interface).
+`pltr agent-manifest` emits every registered command as deterministic JSON, so an agent discovers the surface without parsing `--help` text. `pltr capabilities` is a parity scorecard against Palantir's published MCP tool catalog, not a list of this CLI's commands. [Details below](#agent-interface).
 
 ### Proposals
 
@@ -116,7 +118,7 @@ Nine capability areas and two global flags that upstream does not have:
 Add the global `--agent` flag to any command. The command then returns a single stable JSON envelope on stdout instead of a table:
 
 ```bash
-pltr --agent capabilities
+pltr --agent agent-manifest
 pltr --agent resource list --folder-rid ri.compass.main.folder.0
 pltr --agent dataset files list ri.foundry.main.dataset.abc123 --page-size 50
 ```
@@ -137,12 +139,20 @@ Every envelope has the same shape:
 
 **Contract guarantees:**
 
-- **Stable schema.** `schema_version` is `pltr-agent-v1`. Fields do not move between commands.
+- **Exactly one document.** `json.loads(stdout)` succeeds for every command. Status messages that a human sees as separate lines are collected into `meta.messages` (each with a `level`) rather than emitted as extra JSON documents. Human-readable output, progress spinners and Rich tables go to **stderr** under `--agent`, so stdout carries the envelope and nothing else. A contract test invokes every registered command under `--agent` and enforces this.
+- **Stable schema.** `schema_version` is `pltr-agent-v1`. Fields do not move between commands. Additions are additive.
 - **Credential redaction.** Any field whose name contains `token`, `secret`, `password`, `private_key`, or `authorization` is replaced with `[REDACTED]`. Pagination cursors (`page_token`) are kept, because a caller needs them to resume.
 - **Resumable pagination.** When a result is paged, `pagination` carries the next cursor.
-- **Non-interactive by default.** `--agent` forbids prompts. A mutation that would normally ask for confirmation fails with a clear policy error unless you pass its explicit confirmation flag (for example `--force`). Use `--non-interactive` to get the same no-prompt behavior without switching output to the envelope.
+- **Non-interactive by default.** `--agent` forbids prompts. A mutation that would normally ask for confirmation fails with a policy error naming the exact flag to pass — `--yes`, `--confirm` or `--force`, depending on the command — and that flag name is checked against the command's real options by a test. The refusal always produces an envelope, but the **exit code is not yet uniform**: it is `1` where the command handles the refusal itself and `2` where it propagates. Branch on the envelope's `errors`, not on the exit code. Use `--non-interactive` to get the same no-prompt behavior without switching output to the envelope.
 
-Start every agent session with `pltr --agent capabilities` to discover the available command surface.
+Two shapes are worth knowing:
+
+- If a command reports more than one result in a single run, `data` is a list and `meta.results` holds each result's metadata, positionally aligned with `data`.
+- A few commands still report errors through a plain console rather than the structured path. Their text is wrapped in one envelope with `meta.result_type` set to `"unstructured"` and the message under `errors`. That is a known gap, flagged honestly rather than dressed up as a structured result.
+
+Start every agent session with `pltr --agent agent-manifest` to discover the available command surface: it emits every registered command with its path, arguments and flags.
+
+`pltr --agent capabilities` answers a different question. It is a parity scorecard against [Palantir's published MCP tool catalog](https://www.palantir.com/docs/foundry/palantir-mcp/available-tools/), reporting which of those capabilities this CLI implements, plans, or is blocked on. It does **not** list this CLI's commands, and does not mention `dependency`.
 
 ---
 
@@ -217,7 +227,7 @@ pltr dataset get ri.foundry.main.dataset.abc123
 pltr ontology list
 pltr orchestration builds search
 pltr folder list ri.compass.main.folder.0        # root folder
-pltr resource-role grant <resource-rid> <user-id> User viewer
+pltr resource-role grant <resource-rid> --principal-id <user-id> --principal-type User --role viewer
 pltr shell                                         # REPL with tab completion + history
 pltr completion install                            # bash / zsh / fish completion
 ```

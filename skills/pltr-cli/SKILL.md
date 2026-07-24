@@ -63,7 +63,9 @@ Before using any command, ensure authentication is configured:
 # Configure interactively
 pltr configure configure
 
-# Or use environment variables
+# Or use environment variables (CI / automation).
+# Used only when no --profile is given and no profile is configured, so an
+# exported variable never overrides a stored profile.
 export FOUNDRY_TOKEN="your-token"
 export FOUNDRY_HOST="foundry.company.com"
 
