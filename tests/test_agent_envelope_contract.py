@@ -286,7 +286,9 @@ class TestAdvertisedBypassFlagsExist:
 
         sites = []
         for path in sorted(pathlib.Path("src/pltr/commands").glob("*.py")):
-            tree = ast.parse(path.read_text())
+            # encoding pinned: Windows defaults to cp1252 and chokes on the
+            # non-ASCII characters in some command prompts
+            tree = ast.parse(path.read_text(encoding="utf-8"))
             for fn in [n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)]:
                 for node in ast.walk(fn):
                     if (
