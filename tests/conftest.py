@@ -11,6 +11,23 @@ from typing import Generator
 from pltr.auth.storage import CredentialStorage
 from pltr.config.settings import Settings
 from pltr.config.profiles import ProfileManager
+from pltr.utils.agent_output import configure_agent_settings
+
+
+@pytest.fixture(autouse=True)
+def _reset_agent_settings() -> Generator[None, None, None]:
+    """Keep --agent state from leaking between tests.
+
+    The root CLI callback sets agent mode on a process-wide ContextVar and only
+    resets it on the *next* root invocation. A test that invokes a sub-app
+    directly bypasses that reset, so a prior `--agent` run would leak in and
+    flip its output path. Reset around every test so order never matters.
+    """
+    configure_agent_settings()
+    try:
+        yield
+    finally:
+        configure_agent_settings()
 
 
 @pytest.fixture

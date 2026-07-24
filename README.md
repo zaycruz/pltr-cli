@@ -152,7 +152,7 @@ Two shapes are worth knowing:
 
 Start every agent session with `pltr --agent agent-manifest` to discover the available command surface: it emits every registered command with its path, arguments and flags.
 
-`pltr --agent capabilities` answers a different question. It is a parity scorecard against [Palantir's published MCP tool catalog](https://www.palantir.com/docs/foundry/palantir-mcp/available-tools/), reporting which of those capabilities this CLI implements, plans, or is blocked on. It does **not** list this CLI's commands, and does not mention `dependency`.
+`pltr --agent capabilities` answers a different question. It is a parity scorecard against [Palantir's published MCP tool catalog](https://www.palantir.com/docs/foundry/palantir-mcp/available-tools/): each of the ~73 MCP tools is marked **implemented** (a real CLI command exists), **planned** (a genuine gap), **blocked** (the SDK cannot do it), or **unsupported** (out of scope for a Foundry CLI — documentation retrieval, SDK codegen, dev-console). The implemented-vs-planned split is derived from the live command surface, so it can never disagree with `agent-manifest` about what ships; `blocked` and `unsupported` are classified explicitly (an SDK limit, or out of scope for a CLI) and stay authoritative. On foundry-platform-sdk 1.95.0 that is 20 implemented, 28 planned, 2 blocked, 23 unsupported — the CLI already covers more Foundry operations than the MCP exposes. It does **not** list this CLI's commands; `agent-manifest` does.
 
 ---
 

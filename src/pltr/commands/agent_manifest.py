@@ -98,7 +98,12 @@ def render_manifest(manifest: Mapping[str, Any], *, agent: bool = False) -> str:
 
 @app.callback(invoke_without_command=True)
 def agent_manifest(ctx: typer.Context) -> None:
-    """Emit the registered CLI grammar as deterministic JSON."""
+    """Emit every registered command as deterministic JSON -- the command surface.
+
+    This is the authoritative list of what the CLI can do: each entry carries a
+    command path, its arguments and its flags. `pltr capabilities` is a
+    different view -- it scores that surface against Palantir's MCP tool catalog.
+    """
     try:
         manifest = build_manifest(ctx.find_root().command)
         if agent_mode_enabled():
