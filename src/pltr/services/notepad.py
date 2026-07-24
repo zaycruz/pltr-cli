@@ -8,6 +8,7 @@ from typing import Any, Iterator, Mapping, Optional
 from ..auth.base import ProfileNotFoundError
 from ..auth.manager import AuthManager
 from .foundry_internal_client import FoundryInternalClient, GraphQLResult
+from .search import SearchService, sanitize_server_text, sanitize_server_value
 
 
 # Select ONLY scalar metadata fields. `metadata.tags` and `notepad.permissions`
@@ -23,6 +24,12 @@ GET_NOTEPAD_CONTENTS_QUERY = """query GetNotepadContentsQuery($notepadRid: RID!)
 }"""
 
 SECTION_TYPE_PREFIX = "rich-text-editor.section.v1."
+
+# VERIFIED against a live stack: the searchResources `type.name` for notepad
+# resources is exactly `Notepad document`. Compare case-insensitively since
+# the gateway's casing is not contractually guaranteed, but never widen the
+# string itself without re-verifying against a live stack.
+NOTEPAD_TYPE_NAME = "Notepad document"
 
 
 class NotepadService:
@@ -57,7 +64,7 @@ class NotepadService:
             return self._inconclusive(self._error_reason(response))
         if response.status == "inconclusive":
             return self._inconclusive(
-                response.reason or "graphql-response-inconclusive"
+                sanitize_server_text(response.reason) or "graphql-response-inconclusive"
             )
 
         data = response.data
@@ -66,16 +73,20 @@ class NotepadService:
             return self._inconclusive("notepad-null")
 
         metadata = notepad.get("metadata")
-        metadata_dict = dict(metadata) if isinstance(metadata, Mapping) else {}
+        metadata_dict = (
+            sanitize_server_value(dict(metadata))
+            if isinstance(metadata, Mapping)
+            else {}
+        )
         latest_version = notepad.get("latestVersion")
         version_dict = (
             dict(latest_version) if isinstance(latest_version, Mapping) else {}
         )
         base = {
-            "rid": notepad.get("rid", notepad_rid),
+            "rid": sanitize_server_text(notepad.get("rid")) or notepad_rid,
             "name": metadata_dict.get("name"),
-            "version": version_dict.get("version"),
-            "version_name": version_dict.get("name"),
+            "version": sanitize_server_value(version_dict.get("version")),
+            "version_name": sanitize_server_text(version_dict.get("name")),
             "metadata": metadata_dict,
         }
         contents = version_dict.get("contents")
@@ -93,7 +104,7 @@ class NotepadService:
         if not isinstance(contents, str):
             return {**base, **self._inconclusive("contents-not-string")}
         try:
-            body = json.loads(contents)
+            body = sanitize_server_value(json.loads(contents))
         except json.JSONDecodeError as exc:
             return {
                 **base,
@@ -124,11 +135,16 @@ class NotepadService:
     @staticmethod
     def _error_reason(response: GraphQLResult) -> str:
         messages = [
-            str(error.get("message"))
+            sanitize_server_text(str(error.get("message")))
             for error in response.errors
             if error.get("message")
         ]
-        return "; ".join(messages) or response.reason or "graphql-error"
+        reason = sanitize_server_text(response.reason)
+        return (
+            "; ".join(message for message in messages if message)
+            or reason
+            or "graphql-error"
+        )
 
     @classmethod
     def _extract_references(cls, body: list[Any]) -> list[dict[str, Any]]:
@@ -187,3 +203,39 @@ class NotepadService:
         if isinstance(children, list):
             for child in children:
                 yield from cls._text_leaves(child)
+
+    def list(
+        self,
+        path_prefixes: list[str],
+        *,
+        page_size: int = 100,
+        page_token: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """List notepads from one path-scoped resource-search page."""
+
+        search_result = SearchService(client=self.client).search_resources(
+            path_prefixes,
+            page_size=page_size,
+            page_token=page_token,
+        )
+        result = {
+            **search_result,
+            "mode": "notepad-list",
+            "local_filters": {
+                "text": None,
+                "resource_type": NOTEPAD_TYPE_NAME,
+                "scope": "returned-page-only",
+            },
+            "relationship_claim": None,
+        }
+        resources = search_result.get("results")
+        if not isinstance(resources, list):
+            return result
+        result["results"] = [
+            resource
+            for resource in resources
+            if isinstance(resource, Mapping)
+            and isinstance(resource.get("type"), str)
+            and resource["type"].casefold() == NOTEPAD_TYPE_NAME.casefold()
+        ]
+        return result

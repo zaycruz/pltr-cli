@@ -27,7 +27,7 @@ pltr-cli is a comprehensive CLI with 100+ commands for:
 - **SQL queries**: Execute queries, export results, manage async queries
 - **Ontology**: List ontologies, object types, objects, execute actions and queries
 - **Orchestration**: Manage builds, jobs, and schedules
-- **Filesystem**: Folders, spaces/namespaces, projects, imports, resources, bounded graphs
+- **Filesystem**: Folders, spaces/namespaces, projects, imports, resources, bounded graphs, cross-resource search, and notepads
 - **Admin**: User, group, role management
 - **Connectivity**: External connections and data imports
 - **MediaSets**: Media file management
@@ -99,7 +99,7 @@ Load these files based on the user's task:
 | Builds, jobs, schedules | `reference/orchestration-commands.md` |
 | Ontologies, objects, actions | `reference/ontology-commands.md` |
 | Users, groups, roles, orgs | `reference/admin-commands.md` |
-| Folders, spaces/namespaces, projects, imports, resources, permissions, graphs | `reference/filesystem-commands.md` |
+| Folders, spaces/namespaces, projects, imports, resources, permissions, graphs, search, notepads | `reference/filesystem-commands.md` |
 | Connections, imports | `reference/connectivity-commands.md` |
 | Media sets, media items | `reference/mediasets-commands.md` |
 | Anthropic Claude models, OpenAI embeddings | `reference/language-models-commands.md` |
@@ -153,6 +153,12 @@ pltr cp ri.foundry.main.dataset.abc123 ri.compass.main.folder.target456
 
 # List folder contents
 pltr folder list ri.compass.main.folder.0  # root folder
+
+# Search one verified Compass path; text and type filters apply to each returned page
+pltr search "sales" --path-prefix "/Finance" --page-size 100 --format json
+
+# Enumerate notepads from an explicit Compass path
+pltr notepad list --path-prefix "/Finance" --page-size 100 --format json
 
 # Search builds
 pltr orchestration builds search

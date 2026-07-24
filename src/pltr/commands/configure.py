@@ -8,9 +8,15 @@ from rich.console import Console
 from rich.prompt import Prompt, Confirm
 
 from ..auth.storage import CredentialStorage
-from ..utils.agent_output import agent_mode_enabled, buffer_agent_payload
 from ..auth.base import ProfileNotFoundError
 from ..config.profiles import ProfileManager
+from ..utils.agent_output import (
+    AgentPolicyError,
+    agent_mode_enabled,
+    buffer_agent_message,
+    buffer_agent_payload,
+    require_confirmation,
+)
 
 app = typer.Typer()
 console = Console()
@@ -93,38 +99,54 @@ def configure(
 @app.command(name="list")
 def list_profiles():
     """List all configured profiles."""
-    profile_manager = ProfileManager()
-    storage = CredentialStorage()
-    profiles = profile_manager.list_profiles()
-    default = profile_manager.get_default()
+    agent_mode = agent_mode_enabled()
+    warnings = []
+    try:
+        profile_manager = ProfileManager()
+        storage = CredentialStorage()
+        profiles = profile_manager.list_profiles()
+        default = profile_manager.get_default()
 
-    if not profiles:
-        if agent_mode_enabled():
-            buffer_agent_payload([], meta={"operation": "list_profiles"})
-            return
-        console.print("[yellow]No profiles configured.[/yellow]")
-        console.print("Run 'pltr configure' to set up your first profile.")
-        return
-
-    if agent_mode_enabled():
-        # An agent needs to know which stack it is pointed at before issuing a
-        # destructive call, so host and auth type are part of the contract.
-        records = []
+        profile_data = []
         for profile in profiles:
             try:
                 creds = storage.get_profile(profile)
-                host, auth_type = creds.get("host"), creds.get("auth_type")
+                host = creds.get("host", "Unknown")
+                auth_type = creds.get("auth_type", "Unknown")
             except ProfileNotFoundError:
-                host, auth_type = None, None
-            records.append(
+                host = None if agent_mode else "Error loading credentials"
+                auth_type = "Unknown"
+                warnings.append(f"Credentials unavailable for profile '{profile}'.")
+
+            profile_data.append(
                 {
-                    "profile": profile,
-                    "default": profile == default,
+                    "name": profile,
+                    "is_default": profile == default,
                     "host": host,
                     "auth_type": auth_type,
                 }
             )
-        buffer_agent_payload(records, meta={"operation": "list_profiles"})
+    except typer.Exit:
+        raise
+    except Exception:
+        if agent_mode:
+            buffer_agent_message(
+                "Could not list configured profiles", level="error"
+            )
+            raise typer.Exit(1)
+        raise
+
+    if agent_mode:
+        buffer_agent_payload(
+            {"profiles": profile_data},
+            meta={"result_type": "profile_list"},
+            warnings=warnings,
+        )
+        return
+
+    if not profiles:
+        console.print("[yellow]No profiles configured.[/yellow]")
+        console.print("Run 'pltr configure' to set up your first profile.")
         return
 
     from rich.table import Table
@@ -135,17 +157,14 @@ def list_profiles():
     table.add_column("Host URL", style="magenta")
     table.add_column("Auth Type", style="green")
 
-    for profile in profiles:
-        is_default = "✓" if profile == default else ""
-        try:
-            creds = storage.get_profile(profile)
-            host = creds.get("host", "Unknown")
-            auth_type = creds.get("auth_type", "Unknown")
-        except ProfileNotFoundError:
-            host = "Error loading credentials"
-            auth_type = "Unknown"
-
-        table.add_row(is_default, profile, host, auth_type)
+    for profile_entry in profile_data:
+        is_default = "✓" if profile_entry["is_default"] else ""
+        table.add_row(
+            is_default,
+            profile_entry["name"],
+            profile_entry["host"],
+            profile_entry["auth_type"],
+        )
 
     console.print(table)
 
@@ -155,14 +174,35 @@ def set_default(
     profile: str = typer.Argument(..., help="Profile name to set as default"),
 ):
     """Set a profile as the default."""
-    profile_manager = ProfileManager()
+    agent_mode = agent_mode_enabled()
+    try:
+        profile_manager = ProfileManager()
 
-    if profile not in profile_manager.list_profiles():
-        console.print(f"[red]Error:[/red] Profile '{profile}' not found")
-        raise typer.Exit(1)
+        if profile not in profile_manager.list_profiles():
+            message = f"Profile '{profile}' not found"
+            if agent_mode:
+                buffer_agent_message(message, level="error")
+            else:
+                console.print(f"[red]Error:[/red] {message}")
+            raise typer.Exit(1)
 
-    profile_manager.set_default(profile)
-    console.print(f"[green]✓[/green] Profile '{profile}' set as default")
+        profile_manager.set_default(profile)
+    except typer.Exit:
+        raise
+    except Exception:
+        if agent_mode:
+            buffer_agent_message(
+                f"Could not set profile '{profile}' as default",
+                level="error",
+            )
+            raise typer.Exit(1)
+        raise
+
+    message = f"Profile '{profile}' set as default"
+    if agent_mode:
+        buffer_agent_message(message, level="success")
+    else:
+        console.print(f"[green]✓[/green] {message}")
 
 
 @app.command(name="use")
@@ -180,22 +220,64 @@ def delete(
     force: bool = typer.Option(False, "--force", "-f", help="Skip confirmation"),
 ):
     """Delete a profile."""
-    storage = CredentialStorage()
-    profile_manager = ProfileManager()
+    agent_mode = agent_mode_enabled()
+    try:
+        storage = CredentialStorage()
+        profile_manager = ProfileManager()
+        profile_exists = profile in profile_manager.list_profiles()
+    except typer.Exit:
+        raise
+    except Exception:
+        if agent_mode:
+            buffer_agent_message(
+                f"Could not delete profile '{profile}'", level="error"
+            )
+            raise typer.Exit(1)
+        raise
 
-    if profile not in profile_manager.list_profiles():
-        console.print(f"[red]Error:[/red] Profile '{profile}' not found")
+    if not profile_exists:
+        message = f"Profile '{profile}' not found"
+        if agent_mode:
+            buffer_agent_message(message, level="error")
+        else:
+            console.print(f"[red]Error:[/red] {message}")
         raise typer.Exit(1)
 
-    if not force:
-        if not Confirm.ask(f"Delete profile '{profile}'?"):
-            console.print("[yellow]Deletion cancelled.[/yellow]")
-            raise typer.Exit()
+    try:
+        confirmed = require_confirmation(
+            f"Delete profile '{profile}'?",
+            confirmed=force,
+        )
+    except AgentPolicyError as exc:
+        if not agent_mode:
+            console.print(f"[red]Error:[/red] {exc}")
+        raise typer.Exit(1)
+
+    if not confirmed:
+        console.print("[yellow]Deletion cancelled.[/yellow]")
+        raise typer.Exit()
 
     try:
         storage.delete_profile(profile)
         profile_manager.remove_profile(profile)
-        console.print(f"[green]✓[/green] Profile '{profile}' deleted")
+        message = f"Profile '{profile}' deleted"
+        if agent_mode:
+            buffer_agent_message(message, level="success")
+        else:
+            console.print(f"[green]✓[/green] {message}")
     except ProfileNotFoundError:
-        console.print(f"[red]Error:[/red] Could not delete profile '{profile}'")
+        message = f"Could not delete profile '{profile}'"
+        if agent_mode:
+            buffer_agent_message(message, level="error")
+        else:
+            console.print(f"[red]Error:[/red] {message}")
         raise typer.Exit(1)
+    except typer.Exit:
+        raise
+    except Exception:
+        if agent_mode:
+            buffer_agent_message(
+                f"Could not delete profile '{profile}'", level="error"
+            )
+            raise typer.Exit(1)
+        raise

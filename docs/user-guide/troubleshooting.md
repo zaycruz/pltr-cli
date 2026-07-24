@@ -14,7 +14,7 @@ pltr --version
 pltr verify
 
 # 3. List configured profiles
-pltr configure list-profiles
+pltr configure list
 
 # 4. Test with a simple command
 pltr hello
@@ -44,7 +44,7 @@ pltr configure configure --profile your-profile
 #### 2. Incorrect Hostname
 ```bash
 # Check your profile configuration
-pltr configure list-profiles
+pltr configure list
 
 # Common mistakes:
 # ❌ Wrong: https://foundry.company.com
@@ -68,7 +68,7 @@ ping foundry.company.com
 ```bash
 # Error: Profile 'xyz' not found
 # List available profiles
-pltr configure list-profiles
+pltr configure list
 
 # Create missing profile
 pltr configure configure --profile xyz
@@ -499,7 +499,7 @@ python --version
 pip show pltr-cli
 
 # 2. Configuration status
-pltr configure list-profiles
+pltr configure list
 pltr verify
 
 # 3. Environment
@@ -523,7 +523,7 @@ env | grep FOUNDRY
 
 💡 **Pro Tips:**
 - Always run `pltr verify` first when troubleshooting
-- Use `pltr configure list-profiles` to check your setup
+- Use `pltr configure list` to check your setup
 - For complex issues, try the same operation via Foundry web interface
 - Keep your token up to date - they may expire
 - Use `pltr shell` for interactive debugging and exploration

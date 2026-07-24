@@ -204,6 +204,42 @@ APIs. It is bounded and always reports incomplete coverage because the public
 SDK has no transformation-lineage endpoint; it must not be treated as full
 pipeline lineage.
 
+## Cross-Resource and Notepad Discovery
+
+```bash
+# Legacy title search
+pltr search "sales data" --limit 25 --format json
+
+# Bounded path-scoped search
+pltr search "sales" \
+  --path-prefix "/Finance" \
+  --resource-type Dataset \
+  --page-size 100 \
+  --format json
+
+# Continue a path-scoped search
+pltr search "sales" \
+  --path-prefix "/Finance" \
+  --page-size 100 \
+  --page-token TOKEN \
+  --format json
+
+# Enumerate notepads from an explicit path
+pltr notepad list --path-prefix "/Finance" --page-size 100 --format json
+```
+
+`search(title:)` is the legacy title-only operation. Path-scoped mode uses
+`searchResources` with verified server-side `pathStartsWith` filtering.
+`--page-token` accepts the prior response's `next_page_token`. Text and
+`--resource-type` constraints are applied locally to only the returned page, so
+the result reports `coverage` and `server_page_count`. The gateway does not
+report continuation state for legacy title search.
+
+`notepad list` requires at least one `--path-prefix`; it never guesses an
+instance root. It selects the live resource type `Notepad document`
+case-insensitively from each returned page. Use `next_page_token` to continue.
+Use `--format json` for machine-readable success output.
+
 ## Resource Commands
 
 ### Get Resource

@@ -77,10 +77,10 @@ pltr configure configure --profile staging
 
 ```bash
 # List all configured profiles
-pltr configure list-profiles
+pltr configure list
 
 # Set default profile
-pltr configure set-default production
+pltr configure use production
 
 # Use specific profile for a command
 pltr verify --profile development
@@ -213,21 +213,16 @@ pltr configure configure --profile development      # Development work
 ### Listing Profiles
 
 ```bash
-pltr configure list-profiles
+pltr configure list
 ```
 
-Output example:
-```
-Configured profiles:
-  * production (default)
-    development
-    staging
-```
+The table marks the default profile and shows only profile names, hosts, and
+authentication types. Stored tokens and OAuth client secrets are not printed.
 
 ### Setting Default Profile
 
 ```bash
-pltr configure set-default development
+pltr configure use development
 ```
 
 ### Deleting Profiles
@@ -277,7 +272,7 @@ pltr configure configure --profile your-profile
 **Solutions:**
 ```bash
 # List existing profiles
-pltr configure list-profiles
+pltr configure list
 
 # Create the missing profile
 pltr configure configure --profile missing-profile
@@ -396,7 +391,7 @@ Once authentication is working:
 ## 🆘 Getting Help
 
 - **Verify setup**: `pltr verify`
-- **List profiles**: `pltr configure list-profiles`
+- **List profiles**: `pltr configure list`
 - **Command help**: `pltr configure --help`
 - **Troubleshooting**: See [Troubleshooting Guide](troubleshooting.md)
 

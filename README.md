@@ -68,22 +68,22 @@ OAuth2 uses `FOUNDRY_CLIENT_ID` and `FOUNDRY_CLIENT_SECRET` instead of `FOUNDRY_
 
 ## What this fork adds
 
-Eight capability areas and two global flags that upstream does not have:
+Nine capability areas and two global flags that upstream does not have:
 
 | Area | Upstream | This fork |
 |------|----------|-----------|
-| Machine output | — | `--agent` on any command → one `pltr-agent-v1` JSON envelope |
+| Machine output | — | `--agent` on agent-aware commands → one `pltr-agent-v1` JSON envelope |
 | Non-interactive mode | — | `--non-interactive` — no prompts, no envelope switch |
 | Change impact | — | `pltr dependency` — 6 target types, evidence graph, CI exit codes |
 | Grammar discovery | — | `pltr agent-manifest`, `pltr capabilities` |
-| Resource search | — | `pltr search` |
+| Resource search | — | `pltr search` — title or path-scoped paginated discovery |
 | Lineage | — | `pltr lineage graph` |
 | Proposals | — | `pltr proposal` — 9 subcommands |
 | Namespaces | — | `pltr namespace list` |
-| Notepads | — | `pltr notepad get` |
+| Notepads | — | `pltr notepad list`, `pltr notepad get` |
 | Agent skill bundle | — | `skills/pltr-cli/` — workflows + 17 references |
 | Tracing | — | optional Langfuse |
-| Leaf commands | 215 | 230 |
+| Leaf commands | 215 | 236 |
 
 ### Change-impact gate
 
@@ -100,8 +100,9 @@ Eight capability areas and two global flags that upstream does not have:
 ### Lineage and discovery
 
 - `pltr lineage graph <rid>` — build a bounded graph from native filesystem relationships.
-- `pltr search <text>` — search Foundry resources by title, read-only.
+- `pltr search <text>` — search by title, or add `--path-prefix` for bounded paginated resource discovery.
 - `pltr namespace list` — list top-level Compass Spaces as namespace discovery records.
+- `pltr notepad list --path-prefix <path>` — enumerate notepads without guessing an instance root.
 - `pltr notepad get <rid>` — read a notepad's latest body and its embedded resource references.
 
 ### Agent skill bundle

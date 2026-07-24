@@ -2,6 +2,7 @@
 Tests for dataset CLI commands.
 """
 
+from click.utils import strip_ansi
 import re
 
 import pytest
@@ -504,5 +505,7 @@ def test_list_transactions_rejects_removed_branch_option(mock_dataset_service):
     )
 
     assert result.exit_code == 2
+    compact_stderr = " ".join(strip_ansi(result.stderr).split())
+    assert "No such option: --branch" in compact_stderr
     assert "No such option: --branch" in _plain(result.stderr)
     mock_dataset_service.get_transactions.assert_not_called()

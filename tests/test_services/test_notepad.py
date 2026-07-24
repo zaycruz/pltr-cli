@@ -13,7 +13,11 @@ from pltr.services.foundry_internal_client import (
     GraphQLResult,
     TokenExpiredError,
 )
-from pltr.services.notepad import GET_NOTEPAD_CONTENTS_QUERY, NotepadService
+from pltr.services.notepad import (
+    GET_NOTEPAD_CONTENTS_QUERY,
+    NOTEPAD_TYPE_NAME,
+    NotepadService,
+)
 
 
 def _readable_frame() -> GraphQLResult:
@@ -402,3 +406,138 @@ def test_graphql_failed_retry_is_classified_without_looping(storage_class, reque
     assert result.errors == []
     assert result.reason == ("graphql-gateway-retry-failed: missing-response-frame")
     assert request.call_count == 2
+
+
+def test_list_reuses_resource_search_and_filters_notepad_type_locally():
+    client = Mock()
+    client.graphql.return_value = GraphQLResult(
+        data={
+            "searchResources": {
+                "nextPageToken": "next",
+                "results": [
+                    {
+                        "highlights": [],
+                        "resource": {
+                            "rid": "ri.notepad.1",
+                            "name": "Notes",
+                            "path": "/Team/Notes",
+                            "type": {"name": "NoTePaD DoCUmEnT"},
+                        },
+                    },
+                    {
+                        "highlights": [],
+                        "resource": {
+                            "rid": "ri.dataset.1",
+                            "name": "Data",
+                            "path": "/Team/Data",
+                            "type": {"name": "Dataset"},
+                        },
+                    },
+                ],
+            }
+        }
+    )
+
+    result = NotepadService(client=client).list(
+        ["/Team"], page_size=10, page_token="current"
+    )
+
+    assert result["mode"] == "notepad-list"
+    assert result["coverage"] == "partial"
+    assert result["next_page_token"] == "next"
+    # Pin the exact verified literal once so a typo in the shared constant is
+    # still caught, even though most assertions below reuse the constant.
+    assert NOTEPAD_TYPE_NAME == "Notepad document"
+    assert result["local_filters"] == {
+        "text": None,
+        "resource_type": NOTEPAD_TYPE_NAME,
+        "scope": "returned-page-only",
+    }
+    assert result["relationship_claim"] is None
+    assert [resource["rid"] for resource in result["results"]] == ["ri.notepad.1"]
+
+
+def test_list_preserves_inconclusive_resource_search_classification():
+    client = Mock()
+    client.graphql.return_value = GraphQLResult(
+        errors=[{"message": "search permission denied"}]
+    )
+
+    result = NotepadService(client=client).list(["/Team"])
+
+    assert result["status"] == "inconclusive"
+    assert result["reason"] == "search permission denied"
+    assert result["results"] is None
+    assert result["local_filters"] == {
+        "text": None,
+        "resource_type": NOTEPAD_TYPE_NAME,
+        "scope": "returned-page-only",
+    }
+
+
+@pytest.mark.parametrize("page_size", [0, 501])
+def test_list_rejects_out_of_bounds_resource_page_size(page_size):
+    client = Mock()
+
+    with pytest.raises(ValueError, match="between 1 and 500"):
+        NotepadService(client=client).list(["/Team"], page_size=page_size)
+
+    client.graphql.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("next_page_token", "coverage"),
+    [(None, "complete"), ("next-empty", "partial")],
+)
+def test_list_empty_pages_preserve_search_coverage(next_page_token, coverage):
+    client = Mock()
+    client.graphql.return_value = GraphQLResult(
+        data={
+            "searchResources": {
+                "nextPageToken": next_page_token,
+                "results": [],
+            }
+        }
+    )
+
+    result = NotepadService(client=client).list(["/Team"])
+
+    assert result["results"] == []
+    assert result["coverage"] == coverage
+    assert result["next_page_token"] == next_page_token
+    assert result["local_filters"]["resource_type"] == NOTEPAD_TYPE_NAME
+
+
+def test_get_strips_controls_from_metadata_body_and_reference_scalars():
+    client = Mock()
+    body = [
+        {"type": "paragraph", "children": [{"text": "hello\x1b]0;bad\x07"}]},
+        {
+            "type": "custom-section",
+            "config": {
+                "sectionTypeId": "rich-text-editor.section.v1.[kind]\x9b",
+                "sectionConfig": {"config": {"rid": "ri.\x00dataset"}},
+            },
+        },
+    ]
+    client.graphql.return_value = GraphQLResult(
+        data={
+            "notepad": {
+                "rid": "ri.\x00notepad",
+                "metadata": {"name": "[Notes]\x1b", "description": "bad\x07"},
+                "latestVersion": {
+                    "name": "v\x9b1",
+                    "version": 1,
+                    "contents": json.dumps(body),
+                },
+            }
+        }
+    )
+
+    result = NotepadService(client=client).get("fallback")
+
+    assert result["rid"] == "ri.notepad"
+    assert result["name"] == "[Notes]"
+    assert result["version_name"] == "v1"
+    assert result["body_text"] == "hello]0;bad"
+    assert result["references"][0]["config"] == {"rid": "ri.dataset"}

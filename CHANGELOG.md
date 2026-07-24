@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No changes yet._
+### Added
+
+- Added bounded, paginated cross-resource discovery to `pltr search` with verified path-prefix filtering, page tokens, and explicit page-local text/type filter coverage.
+- Added `pltr notepad list` to enumerate notepad resources from an explicit Compass path prefix.
+
+### Fixed
+
+- `pltr configure list` now honors global `--agent` output and redacts credentials.
+- `pltr configure delete` now rejects prompt-dependent execution under `--non-interactive` unless `--force` is supplied.
 
 ## [0.23.0] - 2026-07-23
 
